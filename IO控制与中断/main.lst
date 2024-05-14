@@ -1,0 +1,49 @@
+C51 COMPILER V9.57.0.0   MAIN                                                              05/14/2024 17:11:19 PAGE 1   
+
+
+C51 COMPILER V9.57.0.0, COMPILATION OF MODULE MAIN
+OBJECT MODULE PLACED IN .\Obj\main.obj
+COMPILER INVOKED BY: D:\Keil_v5\C51\BIN\C51.EXE User\main.c OPTIMIZE(8,SPEED) BROWSE INCDIR(.\App;.\User) DEBUG OBJECTEX
+                    -TEND PRINT(.\main.lst) TABS(2) OBJECT(.\Obj\main.obj)
+
+line level    source
+
+   1          #include "main.h"
+   2          
+   3          static void INT0_Init();
+   4          
+   5          int main(void)
+   6          {
+   7   1        IO_Mode.Open_Drain();
+   8   1        return 0;
+   9   1      }
+  10          
+  11          
+  12          
+  13          //中断初始化
+  14          static void INT0_Init()
+  15          {  
+  16   1          IT0 = 1; // 设置INT0为下降沿触发  
+  17   1          EX0 = 1; // 打开外部中断0  
+  18   1          EA = 1;  // 打开全局中断
+  19   1      }  
+  20          
+  21          //KEY1(P32)中断服务函数
+  22          void INT0_isr() interrupt 0
+  23          {
+  24   1        P34=~P34;
+  25   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =     21    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

@@ -1,0 +1,5 @@
+".\Obj\main.obj",
+".\Obj\Public.obj",
+".\Obj\IO_Mode.obj" 
+TO ".\Obj\IO_Control" 
+PRINT(".\IO_Control.m51") RAMSIZE(256) 
