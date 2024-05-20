@@ -1,0 +1,82 @@
+C51 COMPILER V9.57.0.0   SYSINIT                                                           05/20/2024 16:59:06 PAGE 1   
+
+
+C51 COMPILER V9.57.0.0, COMPILATION OF MODULE SYSINIT
+OBJECT MODULE PLACED IN .\Obj\SysInit.obj
+COMPILER INVOKED BY: D:\Keil_v5\C51\BIN\C51.EXE User\SysInit.c OPTIMIZE(8,SPEED) BROWSE INCDIR(.\App;.\User) DEBUG OBJEC
+                    -TEXTEND PRINT(.\Obj\SysInit.lst) TABS(2) OBJECT(.\Obj\SysInit.obj)
+
+line level    source
+
+   1          #include "main.h"
+   2          
+   3          
+   4          static void GPIO_Init();
+   5          static void IE_Init();
+   6          static void Run_Indication();
+   7          static void System_Init();
+   8          
+   9          //创建对象
+  10          Hardware_Init_t Hardware_Init=
+  11          {
+  12            GPIO_Init,
+  13            IE_Init,
+  14            Run_Indication,
+  15            System_Init
+  16          };
+  17          
+  18          
+  19          //引脚初始化
+  20          static void GPIO_Init()
+  21          {
+  22   1        //P34推挽输出，P32高阻输入,P33准双向口
+  23   1        P3M1=0x04;
+  24   1        P3M0=0x10;
+  25   1      }
+  26          
+  27          //中断初始化
+  28          static void IE_Init()
+  29          {
+  30   1        IT0 = 1; // 设置INT0为下降沿触发  
+  31   1        EX0 = 1; // 关闭外部中断0  
+  32   1        ES  = 1; //使能串口1中断
+  33   1        EA = 1;  // 打开全局中断
+  34   1      }
+  35          
+  36          //运行指示
+  37          static void Run_Indication()
+  38          {
+  39   1        uint8_t i;
+  40   1        for(i=0;i<5;i++)
+  41   1        {
+  42   2          P34=~P34;
+  43   2          Public.Delayms(50);
+  44   2        }
+  45   1      }
+  46          
+  47          //系统初始化
+  48          static void System_Init()
+  49          {
+  50   1        Public.Delayms(50);
+  51   1        Hardware_Init.Run_Indication();
+  52   1        Hardware_Init.GPIO_Init();
+  53   1        Hardware_Init.IE_Init();
+  54   1        UART1.UART_Init();
+C51 COMPILER V9.57.0.0   SYSINIT                                                           05/20/2024 16:59:06 PAGE 2   
+
+  55   1      }
+  56          
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =     85    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =     12       1
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

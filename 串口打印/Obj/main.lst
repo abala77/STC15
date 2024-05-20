@@ -1,0 +1,56 @@
+C51 COMPILER V9.57.0.0   MAIN                                                              05/20/2024 16:59:06 PAGE 1   
+
+
+C51 COMPILER V9.57.0.0, COMPILATION OF MODULE MAIN
+OBJECT MODULE PLACED IN .\Obj\main.obj
+COMPILER INVOKED BY: D:\Keil_v5\C51\BIN\C51.EXE User\main.c OPTIMIZE(8,SPEED) BROWSE INCDIR(.\App;.\User) DEBUG OBJECTEX
+                    -TEND PRINT(.\Obj\main.lst) TABS(2) OBJECT(.\Obj\main.obj)
+
+line level    source
+
+   1          #include "main.h"
+   2          
+   3          
+   4          int main(void)
+   5          {
+   6   1        Hardware_Init.System_Init();
+   7   1        printf("Program is running.");
+   8   1        while(true)
+   9   1        {
+  10   2          if((strstr(UART1.Receive_Data,"P34=1"))!=0)
+  11   2          {
+  12   3            printf("开灯%s\n",UART1.Receive_Data);//向串口发送信息
+  13   3            P34=1;
+  14   3            memset(UART1.Receive_Data,0,strlen(UART1.Receive_Data));//缓冲数据清零，确保下次成功接收
+  15   3            UART1.ucRec_Cnt=0;
+  16   3          }
+  17   2          else if((strstr(UART1.Receive_Data,"P34=0"))!=0)
+  18   2          {
+  19   3            printf("关灯%s\n",UART1.Receive_Data);
+  20   3            P34=0;
+  21   3            memset(UART1.Receive_Data,0,strlen(UART1.Receive_Data));
+  22   3            UART1.ucRec_Cnt=0;
+  23   3          }
+  24   2        }
+  25   1      }
+  26          
+  27          
+  28          //KEY1(P32)中断服务函数
+  29          void INT0_isr() interrupt 0
+  30          {
+  31   1        P34=~P34;
+  32   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    154    ----
+   CONSTANT SIZE    =     48    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)
