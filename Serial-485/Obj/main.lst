@@ -1,0 +1,63 @@
+C51 COMPILER V9.57.0.0   MAIN                                                              05/21/2024 17:59:26 PAGE 1   
+
+
+C51 COMPILER V9.57.0.0, COMPILATION OF MODULE MAIN
+OBJECT MODULE PLACED IN .\Obj\main.obj
+COMPILER INVOKED BY: D:\Keil_v5\C51\BIN\C51.EXE User\main.c OPTIMIZE(8,SPEED) BROWSE INCDIR(.\App;.\User) DEBUG OBJECTEX
+                    -TEND PRINT(.\Obj\main.lst) TABS(2) OBJECT(.\Obj\main.obj)
+
+line level    source
+
+   1          #include "main.h"
+   2          
+   3          uint8_t flag11=0;
+   4          
+   5          int main(void)
+   6          {
+   7   1        Hardware_Init.System_Init();
+   8   1        UART1.RS485_Send_Mode();      //设置485为发送模式
+   9   1        printf("Program is running.\n");//数据发送
+  10   1        UART1.RS485_Receive_Mode();   //默认为接收模式，拉低电平
+  11   1        while(true)
+  12   1        {
+  13   2          if((strstr(UART1.Receive_Data,"P34=1"))!=0)
+  14   2          {
+  15   3            UART1.RS485_Send_Mode();
+  16   3            printf("开灯%s\n",UART1.Receive_Data);//向串口发送信息
+  17   3            UART1.RS485_Receive_Mode();
+  18   3            P34=1;
+  19   3            memset(UART1.Receive_Data,0,strlen(UART1.Receive_Data));//缓冲数据清零，确保下次成功接收
+  20   3            UART1.ucRec_Cnt=0;
+  21   3          }
+  22   2          else if((strstr(UART1.Receive_Data,"P34=0"))!=0)
+  23   2          {
+  24   3            UART1.RS485_Send_Mode();
+  25   3            printf("关灯%s\n",UART1.Receive_Data);
+  26   3            UART1.RS485_Receive_Mode();
+  27   3            P34=0;
+  28   3            memset(UART1.Receive_Data,0,strlen(UART1.Receive_Data));
+  29   3            UART1.ucRec_Cnt=0;
+  30   3          }
+  31   2        }
+  32   1      }
+  33          
+  34          
+  35          //KEY1(P32)中断服务函数
+  36          void INT0_isr() interrupt 0
+  37          {
+  38   1        P34=~P34;
+  39   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    196    ----
+   CONSTANT SIZE    =     49    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =      1    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

@@ -1,0 +1,106 @@
+C51 COMPILER V9.57.0.0   SYSINIT                                                           05/21/2024 17:59:26 PAGE 1   
+
+
+C51 COMPILER V9.57.0.0, COMPILATION OF MODULE SYSINIT
+OBJECT MODULE PLACED IN .\Obj\SysInit.obj
+COMPILER INVOKED BY: D:\Keil_v5\C51\BIN\C51.EXE User\SysInit.c OPTIMIZE(8,SPEED) BROWSE INCDIR(.\App;.\User) DEBUG OBJEC
+                    -TEXTEND PRINT(.\Obj\SysInit.lst) TABS(2) OBJECT(.\Obj\SysInit.obj)
+
+line level    source
+
+   1          #include "main.h"
+   2          
+   3          
+   4          static void GPIO_Init();
+   5          static void IE_Init();
+   6          static void Run_Indication();
+   7          static void System_Init();
+   8          
+   9          //创建对象
+  10          Hardware_Init_t Hardware_Init=
+  11          {
+  12            GPIO_Init,
+  13            IE_Init,
+  14            Run_Indication,
+  15            System_Init
+  16          };
+  17          
+  18          
+  19          //引脚初始化
+  20          static void GPIO_Init()
+  21          {
+  22   1        //M1  M0
+  23   1        //0   0      准双向口
+  24   1        //0   1      推挽输出
+  25   1        //1   0      高阻输入
+  26   1        //1   1      开漏
+  27   1        
+  28   1        //P34推挽输出，P32高阻输入,P33准双向口
+  29   1        //P30、P31准双向口
+  30   1        //P36高阻输入，P37推挽输出
+  31   1        P3M1=0x44;//0100 0100
+  32   1        P3M0=0x90;//1001 0000
+  33   1        P35=0;
+  34   1        
+  35   1        //P20设置为推挽模式
+  36   1        P2M1=0x00;
+  37   1        P2M0=0x01;
+  38   1        
+  39   1        P2 &= (~bit0);
+  40   1        
+  41   1        //P5
+  42   1        P5M1=0x00;
+  43   1        P5M0=0xFF;
+  44   1        P54=1;//打开外设电源
+  45   1        P55=0;
+  46   1        
+  47   1        //Public.Delayms(2);//等待电平平稳
+  48   1      }
+  49          
+  50          //中断初始化
+  51          static void IE_Init()
+  52          {
+  53   1        EX0 = 1; // 打开外部中断0 
+  54   1        IT0 = 1; // 设置INT0为下降沿触发  
+C51 COMPILER V9.57.0.0   SYSINIT                                                           05/21/2024 17:59:26 PAGE 2   
+
+  55   1        ET0 = 1;  //打开定时器0中断
+  56   1        ES  = 1; //使能串口1中断
+  57   1        EA = 1;  // 打开全局中断
+  58   1      }
+  59          
+  60          //运行指示
+  61          static void Run_Indication()
+  62          {
+  63   1        uint8_t i;
+  64   1        for(i=0;i<10;i++)
+  65   1        {
+  66   2          P34=~P34;
+  67   2          Public.Delayms(100);
+  68   2        }
+  69   1      }
+  70          
+  71          //系统初始化
+  72          static void System_Init()
+  73          {
+  74   1        Public.Delayms(100);
+  75   1        Hardware_Init.GPIO_Init();
+  76   1        Hardware_Init.Run_Indication();
+  77   1        Hardware_Init.IE_Init();
+  78   1        UART1.UART_Init();
+  79   1      }
+  80          
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    107    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =     12       1
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)
