@@ -1,0 +1,8 @@
+".\Obj\main.obj",
+".\Obj\Public.obj",
+".\Obj\IO_Mode.obj",
+".\Obj\UART1.obj",
+".\Obj\SysInit.obj" 
+TO ".\Obj\ModbusRTU_485" 
+PRINT(".\Obj\ModbusRTU_485.m51") RAMSIZE(256) 
+CODE( 0X0000-0XEFF8 )
