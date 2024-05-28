@@ -1,0 +1,286 @@
+C51 COMPILER V9.57.0.0   UART1                                                             05/28/2024 21:50:52 PAGE 1   
+
+
+C51 COMPILER V9.57.0.0, COMPILATION OF MODULE UART1
+OBJECT MODULE PLACED IN .\Obj\UART1.obj
+COMPILER INVOKED BY: D:\Keil_v5\C51\BIN\C51.EXE App\UART1.c OPTIMIZE(8,SPEED) BROWSE INCDIR(.\App;.\User) DEBUG OBJECTEX
+                    -TEND PRINT(.\Obj\UART1.lst) TABS(2) OBJECT(.\Obj\UART1.obj)
+
+line level    source
+
+   1          #include "main.h"
+   2          
+   3          #define RS485_Mode_Switch P20
+   4          #define RS485_setSendMode    1
+   5          #define RS485_setReceiveMode 0
+   6          #define Receive_Data_Length 10
+   7          #define Send_Data_Length    10
+   8          
+   9          static uint8_t idata Receive_Data[Receive_Data_Length]={0};
+  10          static uint8_t idata SendBuf_Data[Send_Data_Length]={0};
+  11          
+  12          /*--------------函数声明---------------------*/
+  13          static void UART1_Init();
+  14          static void SendByte(uint8_t dat);
+  15          static void SendString(uint8_t *string);
+  16          static void Send_Mode(void);  
+  17          static void Receive_Mode(void);
+  18          static void Protocol(void); 
+  19          static void SendArray(uint8_t *,uint8_t);
+  20          
+  21          //创建串口1对象
+  22          UART_t UART1=
+  23          {
+  24            None,
+  25            Baud_115200,
+  26            false,
+  27            false,
+  28            0,
+  29          
+  30            SendBuf_Data,
+  31            Receive_Data,
+  32            
+  33            UART1_Init,
+  34            SendByte,
+  35            SendArray,
+  36            SendString,
+  37            Protocol,
+  38            
+  39            RS485,
+  40            Send_Mode,
+  41            Receive_Mode,
+  42          };
+  43          
+  44          //串口1初始化
+  45          static void UART1_Init()
+  46          {
+  47   1        //是否校验
+  48   1        switch(UART1.ParityBit)
+  49   1        {
+  50   2          case None:
+  51   2            SCON=0X50;  //模式1，8位数据，允许接收数据
+  52   2            break;
+  53   2          default:
+  54   2            SCON=0XD0;  //模式3，9位数据，允许接收数据
+C51 COMPILER V9.57.0.0   UART1                                                             05/28/2024 21:50:52 PAGE 2   
+
+  55   2            break;
+  56   2        }
+  57   1        //接口类型
+  58   1        switch(UART1.Interface_Type)
+  59   1        {
+  60   2          case TTL:
+  61   2          case RS232:
+  62   2            AUXR1&=0x3F;  //串口1映射至P30,P31
+  63   2            break;
+  64   2          case RS485:
+  65   2            //串口1映射至P36,P37
+  66   2            AUXR1&=~bit7;
+  67   2            AUXR1|=bit6;
+  68   2            break;
+  69   2        }
+  70   1        
+  71   1        PCON=0X00;  //波特率不加倍
+  72   1        TMOD&=0X0F; //设定定时器1为16位自动重装方式
+  73   1        AUXR |= 0x40;   //定时器1时钟为Fosc,即1T
+  74   1        AUXR &= 0xFE;   //串口1选择定时器1为波特率发生器
+  75   1        
+  76   1        //设置波特率
+  77   1        switch(UART1.BaudRate)
+  78   1        {
+  79   2          case Baud_4800: TL1 = 0xC0;TH1 = 0xFD; break;
+  80   2          case Baud_9600: TL1 = 0xE0;TH1 = 0xFE; break;
+  81   2          case Baud_19200:   TL1 = 0x70; TH1 = 0xFF; break;
+  82   2          case Baud_115200:  TL1 = 0xE8; TH1 = 0xFF; break;
+  83   2          default:           TL1 = 0xC0; TH1 = 0xFD; break;
+  84   2        }
+  85   1      
+  86   1        ET1 = 0;        //禁止定时器1中断
+  87   1        TR1 = 1;        //启动定时器1
+  88   1        REN  = 1;      //允许串口1接收
+  89   1      }
+  90          
+  91          /*
+  92            *  @name   SendByte
+  93            *  @brief  单个字节数据发送
+  94            *  @param  dat:一个字节数据
+  95            *  @retval None
+  96          */
+  97          static void SendByte(uint8_t dat)
+  98          {
+  99   1        bit temp_P;
+ 100   1        while(UART1.Tx_Busy_Flag==true);//等待前面数据发送完
+ 101   1        if(UART1.ParityBit!=None)
+ 102   1        {
+ 103   2          ACC=dat;//获取校验位P,P=1奇数个1，P=0，偶数个1
+ 104   2          temp_P=P;
+ 105   2          switch(UART1.ParityBit)
+ 106   2          {
+ 107   3            case Odd: TB8=~temp_P;break;
+ 108   3            case Even: TB8=temp_P;break;
+ 109   3          }
+ 110   2        }
+ 111   1        
+ 112   1        UART1.Tx_Busy_Flag=true;
+ 113   1        SBUF=dat;
+ 114   1      }
+ 115          
+ 116          //发送字符串
+C51 COMPILER V9.57.0.0   UART1                                                             05/28/2024 21:50:52 PAGE 3   
+
+ 117          static void SendString(uint8_t *str)
+ 118          {
+ 119   1        UART1.RS485_Send_Mode();
+ 120   1        while(*str)
+ 121   1        {
+ 122   2          UART1.SendByte(*(str++));
+ 123   2        }
+ 124   1        while(UART1.Tx_Busy_Flag==true);
+ 125   1        Public.Delayms(1);
+ 126   1        UART1.RS485_Receive_Mode();
+ 127   1      }
+ 128          
+ 129          //发送数组
+ 130          static void SendArray(uint8_t *array,uint8_t LEN)
+ 131          {
+ 132   1        
+ 133   1        UART1.RS485_Send_Mode();
+ 134   1        while(LEN--)
+ 135   1        {
+ 136   2          UART1.SendByte(*(array++));
+ 137   2        }
+ 138   1        while(UART1.Tx_Busy_Flag==true);
+ 139   1        Public.Delayms(1);
+ 140   1        UART1.RS485_Receive_Mode();
+ 141   1      }
+ 142          
+ 143          
+ 144          
+ 145          //putchar函数重定义
+ 146          extern char putchar(char C)
+ 147          {
+ 148   1        UART1.SendByte((uint8_t)C);
+ 149   1        return C;
+ 150   1      }
+ 151          
+ 152          //将485设置为发送模式
+ 153          static void Send_Mode()
+ 154          {
+ 155   1        RS485_Mode_Switch=RS485_setSendMode;
+ 156   1        Public.Delayms(2);//等待硬件电路反应过来
+ 157   1      }
+ 158          
+ 159          //将485设置为接收模式
+ 160          static void Receive_Mode()
+ 161          {
+ 162   1        Public.Delayms(2);//等待前面的数据发送完
+ 163   1        RS485_Mode_Switch=RS485_setReceiveMode;
+ 164   1      }
+ 165          
+ 166          //串口协议
+ 167          static void Protocol()
+ 168          {
+ 169   1        bit Receive_8_Byte=1;//默认接收到了8个字节数据
+ 170   1        if(UART1.ucRec_Flag==true)
+ 171   1        {
+ 172   2          //过滤干扰数据0
+ 173   2          if(UART1.pucRec_Buffer!=0)
+ 174   2          {
+ 175   3            Timer0.usDelay_Timer=0;
+ 176   3            //等待接收到8个数据
+ 177   3            while(UART1.ucRec_Cnt<8)
+ 178   3            {
+C51 COMPILER V9.57.0.0   UART1                                                             05/28/2024 21:50:52 PAGE 4   
+
+ 179   4              if(Timer0.usDelay_Timer>=TIMER0_100mS)//100ms没接收完8个字节，跳出循环
+ 180   4              {
+ 181   5                Receive_8_Byte=0;
+ 182   5                break;
+ 183   5              } 
+ 184   4            }
+ 185   3            if(Receive_8_Byte)
+ 186   3            {
+ 187   4              Modbus.Protocol_Analysis(&UART1);//解析协议
+ 188   4            }
+ 189   3            else
+ 190   3            {
+ 191   4              #if TestPrint
+ 192   4                UART1.RS485_Send_Mode();
+ 193   4                printf("Not have 8 Byte！！");
+ 194   4                UART1.RS485_Receive_Mode();
+ 195   4              #endif 
+ 196   4            }
+ 197   3          }
+ 198   2          Public.Memory_Clr(UART1.pucRec_Buffer,UART1.ucRec_Cnt);
+ 199   2          UART1.ucRec_Cnt=0;
+ 200   2          UART1.ucRec_Flag=false;
+ 201   2        }
+ 202   1      }
+ 203          
+ 204          /*
+ 205            *  @name   uart1_isr
+ 206            *  @brief  串口1中断服务函数
+ 207            *  @param  None
+ 208            *  @retval None
+ 209          */
+ 210          void uart1_isr() interrupt 4 using 1
+ 211          {
+ 212   1        //3个缓存变量不能少
+ 213   1        uint8_t temp_SBUF;
+ 214   1        bit temp_RB8;
+ 215   1        bit temp_p;
+ 216   1        if(TI==1)
+ 217   1        {
+ 218   2          TI=(bit)0;
+ 219   2          UART1.Tx_Busy_Flag=false;
+ 220   2        }
+ 221   1      
+ 222   1        if(RI==1)
+ 223   1        {
+ 224   2          RI=0;
+ 225   2          temp_SBUF=SBUF;
+ 226   2          temp_RB8=RB8;
+ 227   2          ACC=temp_SBUF;
+ 228   2          temp_p=P;
+ 229   2          if(UART1.ucRec_Cnt<Receive_Data_Length)//还有缓冲位置
+ 230   2          {
+ 231   3            switch(UART1.ParityBit)
+ 232   3            {
+ 233   4              case Odd:
+ 234   4                //如果P=1，前面8位的1个数是奇数，那么RB8应该=0
+ 235   4                if(temp_p==~temp_RB8)
+ 236   4                {
+ 237   5                  UART1.pucRec_Buffer[UART1.ucRec_Cnt++]=temp_SBUF;
+ 238   5                }
+ 239   4                break;
+ 240   4              case Even:
+C51 COMPILER V9.57.0.0   UART1                                                             05/28/2024 21:50:52 PAGE 5   
+
+ 241   4                if(temp_p==temp_RB8)
+ 242   4                {
+ 243   5                  flag11=temp_RB8;
+ 244   5                  UART1.pucRec_Buffer[UART1.ucRec_Cnt++]=temp_SBUF;
+ 245   5                }
+ 246   4                break;
+ 247   4              case None:
+ 248   4                UART1.pucRec_Buffer[UART1.ucRec_Cnt++]=temp_SBUF;
+ 249   4                break;
+ 250   4            }
+ 251   3          }
+ 252   2          UART1.ucRec_Flag=true;
+ 253   2        }
+ 254   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    553    ----
+   CONSTANT SIZE    =     20    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =     33       8
+   IDATA SIZE       =     20    ----
+   BIT SIZE         =   ----       4
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

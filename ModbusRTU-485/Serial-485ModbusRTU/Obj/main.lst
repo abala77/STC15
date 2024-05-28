@@ -1,0 +1,45 @@
+C51 COMPILER V9.57.0.0   MAIN                                                              05/28/2024 21:50:51 PAGE 1   
+
+
+C51 COMPILER V9.57.0.0, COMPILATION OF MODULE MAIN
+OBJECT MODULE PLACED IN .\Obj\main.obj
+COMPILER INVOKED BY: D:\Keil_v5\C51\BIN\C51.EXE User\main.c OPTIMIZE(8,SPEED) BROWSE INCDIR(.\App;.\User) DEBUG OBJECTEX
+                    -TEND PRINT(.\Obj\main.lst) TABS(2) OBJECT(.\Obj\main.obj)
+
+line level    source
+
+   1          #include "main.h"
+   2          
+   3          
+   4          uint8_t flag11=0;   //全局标志
+   5          
+   6          
+   7          int main(void)
+   8          {
+   9   1        Hardware_Init.System_Init();//系统初始化
+  10   1        while(true)
+  11   1        {
+  12   2          UART1.Protocol();//Modbus协议
+  13   2        }
+  14   1      }
+  15          
+  16          
+  17          //KEY1(P32)中断服务函数
+  18          void INT0_isr() interrupt 0
+  19          {
+  20   1        P34=~P34;
+  21   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =     19    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =      1    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)
