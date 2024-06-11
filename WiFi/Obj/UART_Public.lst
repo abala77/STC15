@@ -1,0 +1,47 @@
+C51 COMPILER V9.57.0.0   UART_PUBLIC                                                       06/08/2024 16:42:48 PAGE 1   
+
+
+C51 COMPILER V9.57.0.0, COMPILATION OF MODULE UART_PUBLIC
+OBJECT MODULE PLACED IN .\Obj\UART_Public.obj
+COMPILER INVOKED BY: D:\Keil_v5\C51\BIN\C51.EXE User\UART_Public.c LARGE OPTIMIZE(1,SPEED) BROWSE INCDIR(.\App;.\User) D
+                    -EBUG OBJECTEXTEND PRINT(.\Obj\UART_Public.lst) TABS(2) OBJECT(.\Obj\UART_Public.obj)
+
+line level    source
+
+   1          #include "main.h"
+   2          
+   3          static void Memory_Clr(UART_t*,uint8_t);
+   4          
+   5          UART_Public_t UART_Public=
+   6          {
+   7            Memory_Clr
+   8          };
+   9          
+  10          
+  11          //Çå³ý»º´æ
+  12          static void Memory_Clr(UART_t* COM,uint8_t LEN)
+  13          {
+  14   1        UART1.RS485_Send_Mode();
+  15   1        printf("COM=%p,&COM=%p\n",COM,&COM);
+  16   1        UART1.RS485_Receive_Mode();
+  17   1        
+  18   1        //UART_t* const xdata COM=UART;
+  19   1        memset(COM->pucRec_Buffer,0,LEN);
+  20   1        COM->ucRec_Cnt=0;
+  21   1        COM->ucRec_Flag=false;
+  22   1        Public.Delayms(10);
+  23   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    201    ----
+   CONSTANT SIZE    =     16    ----
+   XDATA SIZE       =      7    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

@@ -1,0 +1,14 @@
+".\Obj\main.obj",
+".\Obj\Public.obj",
+".\Obj\IO_Mode.obj",
+".\Obj\UART1.obj",
+".\Obj\SysInit.obj",
+".\Obj\CRC16.obj",
+".\Obj\ModbusRTU.obj",
+".\Obj\Timer0.obj",
+".\Obj\UART2.obj",
+".\Obj\WiFi.obj",
+".\Obj\Key1.obj" 
+TO ".\Obj\WiFi" 
+PRINT(".\Obj\WiFi.m51") RAMSIZE(256) 
+CODE( 0X0000-0XEFF8 )
