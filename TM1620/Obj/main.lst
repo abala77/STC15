@@ -1,0 +1,63 @@
+C51 COMPILER V9.57.0.0   MAIN                                                              06/13/2024 19:52:30 PAGE 1   
+
+
+C51 COMPILER V9.57.0.0, COMPILATION OF MODULE MAIN
+OBJECT MODULE PLACED IN .\Obj\main.obj
+COMPILER INVOKED BY: D:\Keil_v5\C51\BIN\C51.EXE User\main.c LARGE OPTIMIZE(1,SPEED) BROWSE INCDIR(.\App;.\User) DEBUG OB
+                    -JECTEXTEND PRINT(.\Obj\main.lst) TABS(2) OBJECT(.\Obj\main.obj)
+
+line level    source
+
+   1          #include "main.h"
+   2          
+   3          
+   4          uint8_t idata flag11=0;   //全局标志
+   5          
+   6          
+   7          
+   8          /* -----------------------------说明 -----------------------------------------
+   9          1、 单片机型号 -> STC15L2K32S2   LQFP32
+  10          2、 系统时钟   -> 外部晶体，11.0592MHz 
+  11          3、 复位       -> 内部上电复位
+  12          4、 MyPrintf   -> 映射到串口1，通过USB接口输出调试信息
+  13          
+  14          5、 定时器0    -> 5ms中断一次，内部定时用
+  15          6、 串口1      -> RS-485
+  16          6、 串口2      -> WIFI模块
+  17          -----------------------------------------------------------------------------*/
+  18          int main(void)
+  19          {
+  20   1        uint8_t main_i=0;
+  21   1        uint8_t main_j=0;
+  22   1      
+  23   1        Hardware_Init.System_Init();//系统初始化
+  24   1        UART1.SendString("Running!\n");
+  25   1      
+  26   1        
+  27   1        while(true)
+  28   1        {
+  29   2          for(main_i=0;main_i<10;main_i++)
+  30   2          {
+  31   3            TM1620.Disp_Number(1,main_i);
+  32   3            for(main_j=0;main_j<10;main_j++)
+  33   3            {
+  34   4              TM1620.Disp_Number(2,main_j);
+  35   4              TM1620.Delay_Bright_ADJ(10);
+  36   4            }
+  37   3          }
+  38   2        }
+  39   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    179    ----
+   CONSTANT SIZE    =     10    ----
+   XDATA SIZE       =      2    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----    ----
+   IDATA SIZE       =      1    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

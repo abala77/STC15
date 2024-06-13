@@ -1,0 +1,84 @@
+C51 COMPILER V9.57.0.0   TIMER0                                                            06/13/2024 19:52:31 PAGE 1   
+
+
+C51 COMPILER V9.57.0.0, COMPILATION OF MODULE TIMER0
+OBJECT MODULE PLACED IN .\Obj\Timer0.obj
+COMPILER INVOKED BY: D:\Keil_v5\C51\BIN\C51.EXE App\Timer0.c LARGE OPTIMIZE(1,SPEED) BROWSE INCDIR(.\App;.\User) DEBUG O
+                    -BJECTEXTEND PRINT(.\Obj\Timer0.lst) TABS(2) OBJECT(.\Obj\Timer0.obj)
+
+line level    source
+
+   1          #include "main.h"
+   2          
+   3          
+   4          static void Timer0_Init(void);
+   5          
+   6          
+   7          Timer0_t idata Timer0=
+   8          {
+   9            0,
+  10            0,
+  11            0,
+  12            Timer0_Init
+  13          };
+  14          
+  15          
+  16          /*
+  17            *  @name   Timer0_Init
+  18            *  @brief  定时器0初始化
+  19            *  @param  None
+  20            *  @retval None
+  21          */
+  22          static void Timer0_Init()   //5毫秒@11.0592MHz
+  23          {
+  24   1        AUXR &= 0x7F;     //定时器时钟12T模式
+  25   1        TMOD &= 0xF0;     //设置定时器模式
+  26   1        TL0 = 0x00;       //设置定时初始值
+  27   1        TH0 = 0xEE;       //设置定时初始值
+  28   1        TF0 = 0;        //清除TF0标志
+  29   1        TR0 = 1;        //定时器0开始计时
+  30   1      }
+  31          
+  32          /*
+  33            *  @name   Timer0_isr
+  34            *  @brief  定时器0中断
+  35            *  @param  None
+  36            *  @retval None
+  37          */
+  38          void Timer0_isr() interrupt 1
+  39          {
+  40   1          if(Timer0.usAT_SettingTips==true)
+  41   1          {
+  42   2            if(++Timer0.usMCU_RUN_Timer>=TIMER0_50ms)
+  43   2            {
+  44   3              Timer0.usMCU_RUN_Timer=0;
+  45   3              Public.Led_Flip();
+  46   3            }
+  47   2          }
+  48   1          else
+  49   1          {
+  50   2            if(++Timer0.usMCU_RUN_Timer>=TIMER0_1s)
+  51   2            {
+  52   3              Timer0.usMCU_RUN_Timer=0;
+  53   3              Public.Led_Flip();
+  54   3            }
+C51 COMPILER V9.57.0.0   TIMER0                                                            06/13/2024 19:52:31 PAGE 2   
+
+  55   2          }
+  56   1        Timer0.usDelay_Timer++;
+  57   1        esp12s.TCP_Reconnect_Timer++;
+  58   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    163    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----    ----
+   IDATA SIZE       =      7    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

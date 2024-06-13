@@ -1,0 +1,443 @@
+C51 COMPILER V9.57.0.0   WIFI                                                              06/13/2024 19:52:31 PAGE 1   
+
+
+C51 COMPILER V9.57.0.0, COMPILATION OF MODULE WIFI
+OBJECT MODULE PLACED IN .\Obj\WiFi.obj
+COMPILER INVOKED BY: D:\Keil_v5\C51\BIN\C51.EXE App\WiFi.c LARGE OPTIMIZE(1,SPEED) BROWSE INCDIR(.\App;.\User) DEBUG OBJ
+                    -ECTEXTEND PRINT(.\Obj\WiFi.lst) TABS(2) OBJECT(.\Obj\WiFi.obj)
+
+line level    source
+
+   1          #include "main.h"
+   2          
+   3          #define WIFI_RST    P03
+   4          #define WIFI_EN     P02
+   5          #define SmartConfig_EN   0
+   6          #define Connect_WiFi  "AT+CWJAP_DEF=\"滴滴滴\",\"znhxkh309\"\r\n"
+   7          #define TCP_Server  "AT+CIPSTART=\"TCP\",\"192.168.101.104\",8888\r\n"  //电脑端模拟的TCP服务器
+   8          
+   9          static void Init(void);                                       //初始化
+  10          static void SmartConfig(void);                                //WiFi模块配网
+  11          static void TCP_Connect_Server(void);                         //通过TCP连接服务器
+  12          static void Send_data(void);                                  //通过TCP发送数据
+  13          static void Receive_data(void);                               //通过TCP接收数据
+  14          static uint8_t SendAT(uint8_t* ,uint8_t* ,Delay_Time_t);      //发送AT指令
+  15          static void Heart(void);
+  16          
+  17          
+  18          static void Computer_to_ESP12S(void);   //电脑串口->单片机->ESP12S
+  19          static void ESP12S_to_Computer(void);   //ESP12S->单片机->电脑串口
+  20          
+  21          WiFi_t xdata esp12s=
+  22          {
+  23            0,
+  24            0,
+  25            
+  26            Init,
+  27            SmartConfig,
+  28            TCP_Connect_Server,
+  29            Send_data,
+  30            Receive_data,
+  31            Heart
+  32          };
+  33          
+  34          WiFi_Debug_t WiFi_Debug=
+  35          {
+  36            Computer_to_ESP12S,   //电脑串口->单片机->ESP12S
+  37            ESP12S_to_Computer    //ESP12S->单片机->电脑串口
+  38          };
+  39          
+  40          
+  41          /*
+  42            *  @name   Init
+  43            *  @brief  WiFi模块初始化
+  44            *  @param  None
+  45            *  @retval None
+  46          */
+  47          static void Init()
+  48          {
+  49   1        //复位
+  50   1        WIFI_RST=0;
+  51   1        Public.Delayms(100);
+  52   1        WIFI_RST=1;
+  53   1        //使能
+  54   1        WIFI_EN=1;
+C51 COMPILER V9.57.0.0   WIFI                                                              06/13/2024 19:52:31 PAGE 2   
+
+  55   1        
+  56   1        Timer0.usDelay_Timer=0;
+  57   1        Timer0.usAT_SettingTips=true; //开指示灯
+  58   1        do
+  59   1        {
+  60   2          //清空缓存
+  61   2          Public.Memory_Clr(UART2.pucRec_Buffer,UART2.ucRec_Cnt);
+  62   2          UART2.ucRec_Cnt=0;
+  63   2          UART2.ucRec_Flag=false;
+  64   2          
+  65   2          //发送测试指令
+  66   2          UART2.SendString("AT\r\n");
+  67   2          Public.Delayms(100);
+  68   2          
+  69   2          //超时则退出
+  70   2          if(Timer0.usDelay_Timer>TIMER0_5s)
+  71   2          {
+  72   3            UART1.SendString("WiFi Init timeout!!\n");
+  73   3            break;
+  74   3          }
+  75   2        }while(strstr(UART2.pucRec_Buffer,"OK")==NULL);
+  76   1        
+  77   1        
+  78   1        Public.Delayms(1000);           //等待内部稳定
+  79   1        Timer0.usAT_SettingTips=false;  //关指示灯
+  80   1      } 
+  81          
+  82          
+  83          /*
+  84            *  @name   SendAT
+  85            *  @brief  发送AT指令
+  86            *  @param  SendCommand:要发送的指令
+  87                       RespondString:成功后返回来的指令
+  88                       OutTime:设置超时时间
+  89            *  @retval None
+  90          */
+  91          static uint8_t SendAT(uint8_t* SendCommand,uint8_t* RespondString,Delay_Time_t xdata OutTime)
+  92          {
+  93   1        uint8_t xdata OK_Flag=1;
+  94   1        uint8_t* const xdata temp_SendCommand=SendCommand;
+  95   1        uint8_t* const xdata temp_RespondString=RespondString;
+  96   1        
+  97   1        Public.Memory_Clr(UART2.pucRec_Buffer,UART2.ucRec_Cnt);
+  98   1        UART2.ucRec_Cnt=0;
+  99   1        UART2.ucRec_Flag=false;
+ 100   1      
+ 101   1        UART2.SendString(temp_SendCommand);   //发送指令
+ 102   1        
+ 103   1        Timer0.usDelay_Timer=0;
+ 104   1        //如果没有有收到\r\n或者对应的成功字符串就是没有成功
+ 105   1        while((strstr(UART2.pucRec_Buffer,"\r\n")==NULL) ||  (strstr(UART2.pucRec_Buffer,RespondString)==NULL))
+ 106   1        {
+ 107   2          if(Timer0.usDelay_Timer>OutTime)
+ 108   2          {
+ 109   3            //超时
+ 110   3            Public.Error_Handler();
+ 111   3            OK_Flag=0;
+ 112   3            break;
+ 113   3          }
+ 114   2        }
+ 115   1      
+ 116   1        //清除缓冲
+C51 COMPILER V9.57.0.0   WIFI                                                              06/13/2024 19:52:31 PAGE 3   
+
+ 117   1        Public.Memory_Clr(UART2.pucRec_Buffer,UART2.ucRec_Cnt);
+ 118   1        UART2.ucRec_Cnt=0;
+ 119   1        UART2.ucRec_Flag=false;
+ 120   1        
+ 121   1        return OK_Flag;   //返回是否成功
+ 122   1      }
+ 123          
+ 124          
+ 125          /*
+ 126            *  @name   SmartConfig
+ 127            *  @brief  智能配网
+ 128            *  @param  None
+ 129            *  @retval None
+ 130          */
+ 131          static void SmartConfig()
+ 132          {
+ 133   1        //检测到长按
+ 134   1        if(Key1.Press==true)
+ 135   1        {
+ 136   2          Timer0.usAT_SettingTips=true; //开指示灯
+ 137   2          //如果之前有链接则退出透传模式
+ 138   2          if(esp12s.TCP_Connect_Status==true)
+ 139   2          {
+ 140   3            UART1.SendString("Exit TouChuan----\n");
+ 141   3            UART2.SendString("+");
+ 142   3            UART2.SendString("+");
+ 143   3            UART2.SendString("+");
+ 144   3            //退出透传模式后等待一秒进入AT模式
+ 145   3            Public.Delayms(1000);
+ 146   3          }
+ 147   2          
+ 148   2          SendAT("AT\r\n","OK",TIMER0_100ms);               //测试AT
+ 149   2          SendAT("ATE0\r\n","OK",TIMER0_100ms);             //关闭回显，防止干扰后续判断
+ 150   2          SendAT("AT+CWMODE_DEF=1\r\n","OK",TIMER0_100ms);  //设置为STA模式
+ 151   2          SendAT("AT+CWAUTOCONN\r\n","OK",TIMER0_100ms);    //上电后自动连接AP
+ 152   2          #if SmartConfig_EN
+                    SendAT("AT+CWSTARTSMART\r\n","OK",TIMER0_1s);   //开启智能配网
+                  #else
+ 155   2            SendAT(Connect_WiFi,"OK",TIMER0_1s);            //连接固定WiFi
+ 156   2          #endif
+ 157   2      
+ 158   2          //等待配网，3分钟超时则退出
+ 159   2          Timer0.usDelay_Timer=0;
+ 160   2          while(Timer0.usDelay_Timer<TIMER0_3m)
+ 161   2          {
+ 162   3            if(strstr(UART2.pucRec_Buffer,"WIFI GOT IP")!=NULL)
+ 163   3            {
+ 164   4              UART1.SendString("WIFI GOT IP");
+ 165   4              //连接wifi后延时3S等待完成内部设置
+ 166   4              Public.Delayms(1000);
+ 167   4              Public.Delayms(1000);
+ 168   4              Public.Delayms(1000);
+ 169   4              break;
+ 170   4            }
+ 171   3          }
+ 172   2          
+ 173   2          Timer0.usAT_SettingTips=false;
+ 174   2          //配置完成系统复位
+ 175   2          Public.softReset();
+ 176   2        }
+ 177   1      } 
+ 178          
+C51 COMPILER V9.57.0.0   WIFI                                                              06/13/2024 19:52:31 PAGE 4   
+
+ 179          
+ 180          /*
+ 181            *  @name   TCP_Connect_Server
+ 182            *  @brief  TCP连接服务器
+ 183            *  @param  None
+ 184            *  @retval None
+ 185          */
+ 186          static void TCP_Connect_Server()
+ 187          {
+ 188   1        uint8_t xdata OK_Flag=0;  //成功返回标志
+ 189   1        sint8_t xdata State=0;    //状态机状态
+ 190   1        
+ 191   1        UART2.SendString("+++");
+ 192   1        //退出透传模式后等待一秒进入AT模式
+ 193   1        Public.Delayms(1000);
+ 194   1        
+ 195   1        Timer0.usDelay_Timer=0;
+ 196   1        Timer0.usAT_SettingTips=true; //开指示灯
+ 197   1        while(State!=-1)
+ 198   1        {
+ 199   2          UART1.RS485_Send_Mode();
+ 200   2          printf("State=%bd,OK_Flag=%bd\n",State,OK_Flag);
+ 201   2          UART1.RS485_Receive_Mode();
+ 202   2          
+ 203   2          switch(State)
+ 204   2          {
+ 205   3            case 0:
+ 206   3              OK_Flag=SendAT("AT\r\n","OK",TIMER0_100ms);       //测试AT
+ 207   3              if(OK_Flag==1)
+ 208   3                State=1;
+ 209   3              else
+ 210   3                State=-1;
+ 211   3              break;
+ 212   3            case 1:
+ 213   3              SendAT("ATE0\r\n","OK",TIMER0_100ms);     //关闭回显
+ 214   3              if(OK_Flag==1)
+ 215   3                State=2;
+ 216   3              else
+ 217   3                State=-1;
+ 218   3              break;
+ 219   3            case 2:
+ 220   3              SendAT("AT+CWMODE_DEF=1\r\n","OK",TIMER0_100ms);  //设置为STA模式，保存到flash
+ 221   3              if(OK_Flag==1)
+ 222   3                State=3;
+ 223   3              else
+ 224   3                State=-1;
+ 225   3              break;
+ 226   3            case 3:
+ 227   3              OK_Flag=SendAT("AT+CIFSR\r\n","192.168",TIMER0_5s);   //查询有没有连接到WiFi
+ 228   3              if(OK_Flag==1)
+ 229   3                State=4;
+ 230   3              else
+ 231   3                State=-1;
+ 232   3              break;
+ 233   3            case 4:
+ 234   3              //如果连接了WiFi可以开始连接服务器
+ 235   3              OK_Flag=SendAT(TCP_Server,"CONNECT",TIMER0_5s);   //连接服务器
+ 236   3              if(OK_Flag==1)
+ 237   3              {
+ 238   4                esp12s.TCP_Connect_Status=true;
+ 239   4                State=5;
+ 240   4              }
+C51 COMPILER V9.57.0.0   WIFI                                                              06/13/2024 19:52:31 PAGE 5   
+
+ 241   3              else
+ 242   3              {
+ 243   4                esp12s.TCP_Connect_Status=false;
+ 244   4                State=-1;
+ 245   4              }
+ 246   3              break;
+ 247   3            case 5:
+ 248   3              OK_Flag=SendAT("AT+CIPMODE=1\r\n","OK",TIMER0_100ms);   //设置为透传模式
+ 249   3              if(OK_Flag==1)
+ 250   3                State=6;
+ 251   3              else
+ 252   3                State=-1;
+ 253   3              break;
+ 254   3            case 6:
+ 255   3              OK_Flag=SendAT("AT+CIPSEND\r\n","OK",TIMER0_100ms);   //开始传输
+ 256   3              if(OK_Flag==1)
+ 257   3                State=-1;
+ 258   3              break;
+ 259   3          }
+ 260   2        }
+ 261   1        //关指示灯
+ 262   1        Timer0.usAT_SettingTips=false;  
+ 263   1        //重连时间清零
+ 264   1        esp12s.TCP_Reconnect_Timer=0;
+ 265   1      } 
+ 266          
+ 267          //通过TCP发送数据
+ 268          static void Send_data()
+ 269          {
+ 270   1        
+ 271   1      } 
+ 272          
+ 273          //通过TCP接收数据
+ 274          static void Receive_data()
+ 275          {
+ 276   1        
+ 277   1      } 
+ 278          
+ 279          /*
+ 280            *  @name   Heart
+ 281            *  @brief  心跳测试
+ 282            *  @param  None
+ 283            *  @retval None
+ 284          */
+ 285          static void Heart()
+ 286          {
+ 287   1        static uint8_t times=0;//声明为静态整个程序运行期间有效
+ 288   1      
+ 289   1        //3秒跳一次
+ 290   1        if(esp12s.TCP_Connect_Status==true && Timer0.usDelay_Timer>TIMER0_3s)
+ 291   1        {
+ 292   2          UART2.SendString("Running!\n");
+ 293   2          while(true)
+ 294   2          {
+ 295   3            if(UART2.ucRec_Flag==true && strstr(UART2.pucRec_Buffer,"OK")!=NULL)
+ 296   3            {
+ 297   4              times=0;
+ 298   4              break;
+ 299   4            }
+ 300   3            
+ 301   3            if(Timer0.usDelay_Timer>TIMER0_4s)
+ 302   3            {
+C51 COMPILER V9.57.0.0   WIFI                                                              06/13/2024 19:52:31 PAGE 6   
+
+ 303   4              times++;
+ 304   4              break;
+ 305   4            }
+ 306   3          }
+ 307   2      
+ 308   2          //如果连续4次都收不到心跳信号判定为断开连接
+ 309   2          if(times>=4)
+ 310   2          {
+ 311   3            esp12s.TCP_Connect_Status=false;
+ 312   3            times=0;
+ 313   3          }
+ 314   2          
+ 315   2          //清除缓存
+ 316   2          Public.Memory_Clr(UART2.pucRec_Buffer,4);
+ 317   2          UART2.ucRec_Cnt=0;
+ 318   2          UART2.ucRec_Flag=false;
+ 319   2          //定时器清零
+ 320   2          Timer0.usDelay_Timer=0;     
+ 321   2        }
+ 322   1      }
+ 323          
+ 324          
+ 325          
+ 326          /*
+ 327            *  @name   Computer_to_ESP12S
+ 328            *  @brief  电脑串口发送数据，模块接收
+ 329            *  @param  None
+ 330            *  @retval None
+ 331          */
+ 332          static void Computer_to_ESP12S()
+ 333          {
+ 334   1        uint8_t xdata TimeOutFlag=1;
+ 335   1      
+ 336   1        //如果有数据过来
+ 337   1        if(UART1.ucRec_Flag==true)
+ 338   1        {
+ 339   2          Timer0.usDelay_Timer=0;
+ 340   2          while(strstr(UART1.pucRec_Buffer,"\r\n")==NULL)
+ 341   2          {
+ 342   3            if(Timer0.usDelay_Timer>TIMER0_100ms)
+ 343   3            {
+ 344   4              TimeOutFlag=0;
+ 345   4              UART1.SendString("TimeOut!\n");
+ 346   4              break;
+ 347   4            }
+ 348   3          }
+ 349   2          
+ 350   2          //如果是AT指令就发送
+ 351   2          if(TimeOutFlag==1 && (*(UART1.pucRec_Buffer)=='A') && (*(UART1.pucRec_Buffer+1)=='T'))
+ 352   2          {
+ 353   3            //发送AT指令给WiFi
+ 354   3            UART1.RS485_Send_Mode();
+ 355   3            printf("Send data=%s",UART1.pucRec_Buffer);
+ 356   3            UART1.RS485_Receive_Mode();
+ 357   3      
+ 358   3            UART2.SendString(UART1.pucRec_Buffer);
+ 359   3          }
+ 360   2          else
+ 361   2          {
+ 362   3            //如果不是AT指令返回错误字符串
+ 363   3            UART1.RS485_Send_Mode();
+ 364   3            printf("Not AT Command!!=%s\n",UART1.pucRec_Buffer);
+C51 COMPILER V9.57.0.0   WIFI                                                              06/13/2024 19:52:31 PAGE 7   
+
+ 365   3            UART1.RS485_Receive_Mode();
+ 366   3      
+ 367   3            UART2.SendString(UART1.pucRec_Buffer);
+ 368   3          }
+ 369   2      
+ 370   2          //重置
+ 371   2          Public.Memory_Clr(UART1.pucRec_Buffer,UART1.ucRec_Cnt);
+ 372   2          UART1.ucRec_Cnt=0;
+ 373   2          UART1.ucRec_Flag=false;
+ 374   2        }
+ 375   1      }
+ 376          
+ 377          
+ 378          /*
+ 379            *  @name   ESP12S_to_Computer
+ 380            *  @brief  模块发数据，电脑收
+ 381            *  @param  None
+ 382            *  @retval None
+ 383          */
+ 384          static void ESP12S_to_Computer()
+ 385          {
+ 386   1        if(UART2.ucRec_Flag==true)
+ 387   1        {
+ 388   2          //等待接收完成
+ 389   2          Timer0.usDelay_Timer=0;
+ 390   2          while(strstr(UART2.pucRec_Buffer,"\r\n")==NULL)
+ 391   2          {
+ 392   3            if(Timer0.usDelay_Timer>TIMER0_100ms)
+ 393   3            {
+ 394   4              UART1.SendString("Receive TimeOut!\n");
+ 395   4              break;
+ 396   4            }
+ 397   3          }
+ 398   2      
+ 399   2          //如果收到返回值无论有没有\r\n都会给通信助手发消息
+ 400   2          UART1.SendString(UART2.pucRec_Buffer);
+ 401   2      
+ 402   2          //清缓存
+ 403   2          Public.Memory_Clr(UART2.pucRec_Buffer,UART2.ucRec_Cnt);
+ 404   2          UART2.ucRec_Cnt=0;
+ 405   2          UART2.ucRec_Flag=false;
+ 406   2        }
+ 407   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =   3147    ----
+   CONSTANT SIZE    =    339    ----
+   XDATA SIZE       =     46    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)
