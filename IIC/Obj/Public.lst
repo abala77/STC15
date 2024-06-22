@@ -1,0 +1,103 @@
+C51 COMPILER V9.57.0.0   PUBLIC                                                            06/22/2024 17:33:48 PAGE 1   
+
+
+C51 COMPILER V9.57.0.0, COMPILATION OF MODULE PUBLIC
+OBJECT MODULE PLACED IN .\Obj\Public.obj
+COMPILER INVOKED BY: D:\Keil_v5\C51\BIN\C51.EXE User\Public.c LARGE OPTIMIZE(1,SPEED) BROWSE INCDIR(.\App;.\User) DEBUG 
+                    -OBJECTEXTEND PRINT(.\Obj\Public.lst) TABS(2) OBJECT(.\Obj\Public.obj)
+
+line level    source
+
+   1          #include "main.h"
+   2          
+   3          
+   4          uint16_t xdata Modbus_Regist[Modbus_Regist_LEN]={0};
+   5          
+   6          
+   7          static void Delay1ms();
+   8          static void Delayms(int);
+   9          
+  10          static void Error_Handler(void);
+  11          static void softReset(void);
+  12          static void Led_Flip(void);
+  13          static void Memory_Clr(uint8_t* ,uint8_t );
+  14          
+  15          //结构体
+  16          Public_t Public=
+  17          {
+  18            Delayms,
+  19            Error_Handler,
+  20            softReset,
+  21            Led_Flip,
+  22            Memory_Clr
+  23          };
+  24          
+  25          
+  26          //错误处理
+  27          static void Error_Handler()
+  28          {
+  29   1        UART1.SendString("WiFi Error\n");
+  30   1      }
+  31          
+  32          //软件复位
+  33          static void softReset()
+  34          {
+  35   1        IAP_CONTR |= 0x20;
+  36   1      }
+  37          
+  38          //LED翻转
+  39          static void Led_Flip()
+  40          {
+  41   1        P34=~P34;
+  42   1      }
+  43          
+  44          //清除缓存
+  45          static void Memory_Clr(uint8_t* pucString,uint8_t LEN)
+  46          {
+  47   1        memset(pucString,0,LEN);
+  48   1        Public.Delayms(10);
+  49   1      }
+  50          
+  51          
+  52          //延时n毫秒
+  53          static void Delayms(int ms)
+  54          {
+C51 COMPILER V9.57.0.0   PUBLIC                                                            06/22/2024 17:33:48 PAGE 2   
+
+  55   1        int k;
+  56   1        for(k=0;k<ms;k++)
+  57   1        {
+  58   2          Delay1ms();
+  59   2        }
+  60   1      }
+  61          
+  62          //1ms延时
+  63          static void Delay1ms()    //@11.0592MHz
+  64          {
+  65   1        unsigned char data i, j;
+  66   1      
+  67   1        _nop_();
+  68   1        _nop_();
+  69   1        _nop_();
+  70   1        i = 11;
+  71   1        j = 190;
+  72   1        do
+  73   1        {
+  74   2          while (--j);
+  75   2        } while (--i);
+  76   1      }
+  77          
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    195    ----
+   CONSTANT SIZE    =     12    ----
+   XDATA SIZE       =     43    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =      2    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)
