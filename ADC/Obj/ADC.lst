@@ -1,0 +1,124 @@
+C51 COMPILER V9.57.0.0   ADC                                                               06/30/2024 16:54:16 PAGE 1   
+
+
+C51 COMPILER V9.57.0.0, COMPILATION OF MODULE ADC
+OBJECT MODULE PLACED IN .\Obj\ADC.obj
+COMPILER INVOKED BY: D:\Keil_v5\C51\BIN\C51.EXE App\ADC.c LARGE OPTIMIZE(1,SPEED) BROWSE INCDIR(.\App;.\User) DEBUG OBJE
+                    -CTEXTEND PRINT(.\Obj\ADC.lst) TABS(2) OBJECT(.\Obj\ADC.obj)
+
+line level    source
+
+   1          #include "main.h"
+   2          
+   3          #define NTC_CHAN 0x04
+   4          
+   5          
+   6          void ADC_Init(void);        //ADC初始化
+   7          uint16_t ADC_Measure(void);     //ADC测量
+   8          uint16_t ADC_MeasureFilter(void); //ADC滤波处理
+   9          
+  10          ADC_t ADC= 
+  11          {
+  12            0,          
+  13          
+  14            ADC_Init,     
+  15            ADC_Measure,    
+  16            ADC_MeasureFilter 
+  17          };
+  18          
+  19          //ADC初始化
+  20          void ADC_Init()
+  21          {
+  22   1        P1ASF=bit4;   //设置P1口为AD口
+  23   1        CLK_DIV |=bit5; //设置ADC_RES放高2位，ADC_RESL放低8位
+  24   1        EADC=0;     //禁止ADC中断
+  25   1        ADC_CONTR=NTC_CHAN|ADC_POWER|ADC_Speed_180; //选择通道、给电、设置速度
+  26   1        Public.Delayms(2);  //等待电源稳定
+  27   1      }
+  28          
+  29          
+  30          //ADC测量
+  31          uint16_t ADC_Measure()
+  32          {
+  33   1        uint16_t result=0;
+  34   1      
+  35   1        //清零换算结果
+  36   1        ADC_RES=0;
+  37   1        ADC_RESL=0;
+  38   1      
+  39   1        //清零采集完成标志
+  40   1        ADC_CONTR&=(~ADC_FLAG);
+  41   1      
+  42   1        ADC_CONTR|=ADC_START;
+  43   1        _nop_();              //等待采集完成
+  44   1        _nop_();
+  45   1        _nop_();
+  46   1        _nop_();
+  47   1      
+  48   1        while(!(ADC_CONTR & ADC_FLAG));   //等待ADC转换完成
+  49   1        ADC_CONTR &= ~ADC_FLAG;       //清零采集完成标志
+  50   1      
+  51   1        //获取转换结果 ->ADC_RES高2位 + ADC_RESL低8位
+  52   1        result=ADC_RES;
+  53   1        result=(result<<8)+ADC_RESL;
+  54   1      
+C51 COMPILER V9.57.0.0   ADC                                                               06/30/2024 16:54:16 PAGE 2   
+
+  55   1        return result;
+  56   1      }
+  57          
+  58          
+  59          
+  60          //ADC滤波处理
+  61          uint16_t ADC_MeasureFilter()
+  62          {
+  63   1        uint16_t ADC_Result=0,ADC_Return=0,ADC_min,ADC_max,ADC_temp;
+  64   1        uint8_t i,j;
+  65   1      
+  66   1        for(i=0;i<16;i++)
+  67   1        {
+  68   2          ADC_Result=0;
+  69   2          ADC_min=ADC_max=ADC.ADC_Measure();
+  70   2      
+  71   2          //8次取样，把极值去掉，取平均值
+  72   2          for(j=0;j<8;j++)
+  73   2          {
+  74   3            ADC_temp=ADC.ADC_Measure();
+  75   3            if(ADC_temp<ADC_min)
+  76   3            {
+  77   4              ADC_Result+=ADC_min;
+  78   4              ADC_min=ADC_temp;
+  79   4            }
+  80   3            else if(ADC_temp>ADC_max)
+  81   3            {
+  82   4              ADC_Result+=ADC_max;
+  83   4              ADC_max=ADC_temp;
+  84   4            }
+  85   3            else
+  86   3            {
+  87   4              ADC_Result+=ADC_temp;
+  88   4            }
+  89   3          }
+  90   2          ADC_Result=ADC_Result/8;
+  91   2          ADC_Return+=ADC_Result;
+  92   2        }
+  93   1      
+  94   1        ADC_Return /= 16;
+  95   1        
+  96   1        return ADC_Return;
+  97   1      }
+  98          
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    479    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =     25    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

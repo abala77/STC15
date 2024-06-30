@@ -1,0 +1,59 @@
+C51 COMPILER V9.57.0.0   MAIN                                                              06/30/2024 16:54:15 PAGE 1   
+
+
+C51 COMPILER V9.57.0.0, COMPILATION OF MODULE MAIN
+OBJECT MODULE PLACED IN .\Obj\main.obj
+COMPILER INVOKED BY: D:\Keil_v5\C51\BIN\C51.EXE User\main.c LARGE OPTIMIZE(1,SPEED) BROWSE INCDIR(.\App;.\User) DEBUG OB
+                    -JECTEXTEND PRINT(.\Obj\main.lst) TABS(2) OBJECT(.\Obj\main.obj)
+
+line level    source
+
+   1          #include "main.h"
+   2          
+   3          
+   4          uint8_t idata flag11=0;   //全局标志
+   5          
+   6          /* -----------------------------说明 -----------------------------------------
+   7          1、 单片机型号 -> STC15L2K32S2   LQFP32
+   8          2、 系统时钟   -> 外部晶体，11.0592MHz 
+   9          3、 复位       -> 内部上电复位
+  10          4、 MyPrintf   -> 映射到串口1，通过USB接口输出调试信息
+  11          
+  12          5、 定时器0    -> 5ms中断一次，内部定时用
+  13          6、 串口1      -> RS-485
+  14          6、 串口2      -> WIFI模块
+  15          -----------------------------------------------------------------------------*/
+  16          int main(void)
+  17          {
+  18   1        uint8_t main_i=0;
+  19   1        uint16_t ADC_Result=0;
+  20   1        float volate=0.0;
+  21   1        
+  22   1        Hardware_Init.System_Init();//系统初始化
+  23   1        UART1.SendString("Running!\n");
+  24   1        
+  25   1        P13=1;    //温度检测开关
+  26   1        while(true)
+  27   1        {
+  28   2          NTC.Form_CheckTemp();   //表格计算温度
+  29   2          NTC.Formula_CalcTemp(); //公式计算温度
+  30   2          TM1620.Disp_Number(1,(uint8_t)NTC.Recent_Tempurature/10);
+  31   2          TM1620.Disp_Number(2,(uint8_t)NTC.Recent_Tempurature%10);
+  32   2          Public.Delayms(500);
+  33   2        }
+  34   1      
+  35   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    216    ----
+   CONSTANT SIZE    =     10    ----
+   XDATA SIZE       =      7    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----    ----
+   IDATA SIZE       =      1    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

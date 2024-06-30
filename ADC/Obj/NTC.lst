@@ -1,0 +1,223 @@
+C51 COMPILER V9.57.0.0   NTC                                                               06/30/2024 16:54:16 PAGE 1   
+
+
+C51 COMPILER V9.57.0.0, COMPILATION OF MODULE NTC
+OBJECT MODULE PLACED IN .\Obj\NTC.obj
+COMPILER INVOKED BY: D:\Keil_v5\C51\BIN\C51.EXE App\NTC.c LARGE OPTIMIZE(1,SPEED) BROWSE INCDIR(.\App;.\User) DEBUG OBJE
+                    -CTEXTEND PRINT(.\Obj\NTC.lst) TABS(2) OBJECT(.\Obj\NTC.obj)
+
+line level    source
+
+   1          /*-----------------------------
+   2          1.使用查表法检测当前的环境温度
+   3          2.使用公式法检测当前的环境温度
+   4          ------------------------------*/
+   5          #include <math.h>
+   6          #include "main.h"
+   7          
+   8          #define R0 10000.0    //参考温度下的电阻值
+   9          #define B  3950.0     //NTC热敏电阻的B值
+  10          #define T0 298.15     // 参考温度，25℃，转换为开尔文（273.15 + 25） 
+  11          
+  12          #define PrintTemp_Debug //调试开关
+  13          
+  14          //温度表格
+  15          uint16_t code TempArray[101][2]=\
+  16          {
+  17          { 958 , 963 },
+  18          { 955 , 957 },
+  19          { 951 , 954 },
+  20          { 948 , 950 },
+  21          { 944 , 947 },
+  22          { 940 , 943 },
+  23          { 936 , 939 },
+  24          { 932 , 935 },
+  25          { 927 , 931 },
+  26          { 922 , 926 },
+  27          { 917 , 921 },
+  28          { 912 , 916 },
+  29          { 907 , 911 },
+  30          { 902 , 906 },
+  31          { 896 , 901 },
+  32          { 890 , 895 },
+  33          { 884 , 889 },
+  34          { 878 , 883 },
+  35          { 871 , 877 },
+  36          { 864 , 870 },
+  37          { 857 , 863 },
+  38          { 850 , 856 },
+  39          { 843 , 849 },
+  40          { 835 , 842 },
+  41          { 827 , 834 },
+  42          { 819 , 826 },
+  43          { 811 , 818 },
+  44          { 803 , 810 },
+  45          { 794 , 802 },
+  46          { 785 , 793 },
+  47          { 776 , 784 },
+  48          { 767 , 775 },
+  49          { 757 , 766 },
+  50          { 748 , 756 },
+  51          { 738 , 747 },
+  52          { 728 , 737 },
+  53          { 718 , 727 },
+  54          { 708 , 717 },
+C51 COMPILER V9.57.0.0   NTC                                                               06/30/2024 16:54:16 PAGE 2   
+
+  55          { 697 , 707 },
+  56          { 687 , 696 },
+  57          { 676 , 686 },
+  58          { 665 , 675 },
+  59          { 654 , 664 },
+  60          { 640 , 655 },
+  61          { 631 , 639 },
+  62          { 620 , 630 },
+  63          { 608 , 619 },
+  64          { 597 , 607 },
+  65          { 586 , 596 },
+  66          { 574 , 585 },
+  67          { 565 , 573 },
+  68          { 554 , 564 },
+  69          { 540 , 553 },
+  70          { 529 , 539 },
+  71          { 517 , 528 },
+  72          { 506 , 516 },
+  73          { 496 , 505 },
+  74          { 485 , 495 },
+  75          { 475 , 484 },
+  76          { 464 , 474 },
+  77          { 453 , 463 },
+  78          { 442 , 452 },
+  79          { 432 , 441 },
+  80          { 421 , 431 },
+  81          { 411 , 420 },
+  82          { 400 , 410 },
+  83          { 390 , 399 },
+  84          { 380 , 389 },
+  85          { 370 , 379 },
+  86          { 360 , 369 },
+  87          { 351 , 359 },
+  88          { 342 , 350 },
+  89          { 332 , 341 },
+  90          { 323 , 331 },
+  91          { 315 , 322 },
+  92          { 306 , 314 },
+  93          { 297 , 305 },
+  94          { 289 , 296 },
+  95          { 281 , 288 },
+  96          { 273 , 280 },
+  97          { 266 , 272 },
+  98          { 258 , 265 },
+  99          { 250 , 257 },
+ 100          { 243 , 249 },
+ 101          { 236 , 242 },
+ 102          { 229 , 235 },
+ 103          { 223 , 228 },
+ 104          { 216 , 222 },
+ 105          { 210 , 215 },
+ 106          { 204 , 209 },
+ 107          { 200 , 203 },
+ 108          { 192 , 199 },
+ 109          { 186 , 191 },
+ 110          { 181 , 185 },
+ 111          { 176 , 180 },
+ 112          { 170 , 175 },
+ 113          { 165 , 169 },
+ 114          { 161 , 164 },
+ 115          { 156 , 160 },
+ 116          { 151 , 155 },
+C51 COMPILER V9.57.0.0   NTC                                                               06/30/2024 16:54:16 PAGE 3   
+
+ 117          { 147 , 150 }
+ 118          };
+ 119          
+ 120          
+ 121          
+ 122          
+ 123          static void Formula_CalcTemp(void);   //计算法得到当前温度
+ 124          static void Form_CheckTemp(void);       //表格计算温度
+ 125          
+ 126          NTC_t NTC=
+ 127          {
+ 128            0,
+ 129            
+ 130            Formula_CalcTemp,
+ 131            Form_CheckTemp
+ 132          };
+ 133          
+ 134          
+ 135          //公式法测量当前温度
+ 136          static void Formula_CalcTemp()
+ 137          {
+ 138   1        float Recent_Resistance;    //当前阻值
+ 139   1        uint16_t ADC_Value=0;
+ 140   1        float Current_Voltage=0;
+ 141   1        
+ 142   1        ADC_Value=ADC.ADC_MeasureFilter();                                              //采集到ADC的值
+ 143   1        Current_Voltage=ADC_Value/1023.00*3.30;                                         //换算出来的电压
+ 144   1        Recent_Resistance=Current_Voltage/((3.30-Current_Voltage)/10000);           //使用欧姆定律求出电阻R=U/I
+ 145   1        NTC.Recent_Tempurature=(1/((1/T0)+(1/B)*log(Recent_Resistance/R0)))-273.15+0.5; //使用B值计算当前温度
+ 146   1      
+ 147   1        #ifdef PrintTemp_Debug
+ 148   1          UART1.RS485_Send_Mode();
+ 149   1          printf("Calc_Recent_Tempurature=%.2f\n",NTC.Recent_Tempurature);
+ 150   1          UART1.RS485_Receive_Mode();
+ 151   1        #endif
+ 152   1      }
+ 153          
+ 154          //查表法测量温度
+ 155          static void Form_CheckTemp()
+ 156          {
+ 157   1        float ADC_Value=0;
+ 158   1        uint8_t left=0,right=100,mid=50;
+ 159   1        
+ 160   1        ADC_Value=ADC.ADC_MeasureFilter();  //检测当前AD电压
+ 161   1        
+ 162   1        //使用二分法查找数据
+ 163   1        while(left<right)
+ 164   1        {
+ 165   2          if(ADC_Value>=TempArray[mid][0] && ADC_Value<=TempArray[mid][1])
+ 166   2          {
+ 167   3            break;
+ 168   3          }
+ 169   2          else if(ADC_Value<TempArray[mid][0])
+ 170   2          {
+ 171   3            left=mid+1;
+ 172   3          }
+ 173   2          else if(ADC_Value>TempArray[mid][1])
+ 174   2          {
+ 175   3            right=mid-1;
+ 176   3          }
+ 177   2          mid=left+(right-left)/2;
+ 178   2        }
+C51 COMPILER V9.57.0.0   NTC                                                               06/30/2024 16:54:16 PAGE 4   
+
+ 179   1        
+ 180   1        //根据查表计算温度
+ 181   1        NTC.Recent_Tempurature=(mid+(ADC_Value-TempArray[mid][0])/(TempArray[mid][1]-TempArray[mid][0]))-30;
+ 182   1        
+ 183   1        #ifdef PrintTemp_Debug
+ 184   1          UART1.RS485_Send_Mode();
+ 185   1          printf("ADC_Value=%.2f\n",ADC_Value);
+ 186   1          printf("mid=%bu\n",mid);
+ 187   1          printf("TempArray[%bu][0]=%hu\n",mid,TempArray[mid][0]);
+ 188   1          printf("TempArray[%bu][1]=%hu\n",mid,TempArray[mid][1]);
+ 189   1          printf("Check_Recent_Tempurature=%.2f\n",NTC.Recent_Tempurature);
+ 190   1          UART1.RS485_Receive_Mode();
+ 191   1        #endif
+ 192   1      }
+ 193          
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =   1058    ----
+   CONSTANT SIZE    =    536    ----
+   XDATA SIZE       =     27    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

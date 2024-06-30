@@ -1,0 +1,104 @@
+C51 COMPILER V9.57.0.0   24C02                                                             06/30/2024 16:54:16 PAGE 1   
+
+
+C51 COMPILER V9.57.0.0, COMPILATION OF MODULE 24C02
+OBJECT MODULE PLACED IN .\Obj\24C02.obj
+COMPILER INVOKED BY: D:\Keil_v5\C51\BIN\C51.EXE App\24C02.c LARGE OPTIMIZE(1,SPEED) BROWSE INCDIR(.\App;.\User) DEBUG OB
+                    -JECTEXTEND PRINT(.\Obj\24C02.lst) TABS(2) OBJECT(.\Obj\24C02.obj)
+
+line level    source
+
+   1          #include "main.h"
+   2          
+   3          #define AT24C04_Addr 0xA0             //从机地址
+   4          #define AT24C04_SaveDataAddr 0x00     //数据存放地址
+   5          
+   6          static uint8_t Sendstr(uint8_t *,uint8_t );     //发送多个字节
+   7          static uint8_t Receivestr(uint8_t *,uint8_t );    //接收多个字节
+   8          
+   9          AT24C02_t AT24C02=
+  10          {
+  11            Sendstr,
+  12            Receivestr
+  13          };
+  14          
+  15          
+  16          //写多个字节数据
+  17          static uint8_t Sendstr(uint8_t *array,uint8_t LEN)
+  18          {
+  19   1        uint8_t i=0;
+  20   1        
+  21   1        IIC.Start_I2c();          //开启IIC
+  22   1        
+  23   1        IIC.SendByte(AT24C04_Addr);       //发送从机地址
+  24   1        if(IIC.slv_Ack==0)return 0;     //如果从机没有反应则返回0
+  25   1      
+  26   1        IIC.SendByte(AT24C04_SaveDataAddr);     //发送需要操作的数据地址
+  27   1        if(IIC.slv_Ack==0)return 0;
+  28   1        
+  29   1        for(i=0;i<LEN;i++)
+  30   1        {
+  31   2          IIC.SendByte(*array);     //发送数据
+  32   2          if(IIC.slv_Ack==0)return 0;
+  33   2          array++;
+  34   2        }
+  35   1      
+  36   1        IIC.Stop_I2c();           //关闭IIC
+  37   1      
+  38   1        Public.Delayms(1);        //等待1ms内部处理信号完成
+  39   1        
+  40   1        return 1;
+  41   1        
+  42   1      }
+  43          
+  44          
+  45          //读取多个字节数据
+  46          static uint8_t Receivestr(uint8_t *array,uint8_t LEN)
+  47          {
+  48   1        uint8_t i=0;
+  49   1        
+  50   1        IIC.Start_I2c();                      //开启IIC
+  51   1        
+  52   1        IIC.SendByte(AT24C04_Addr);           //发送从机地址
+  53   1        if(IIC.slv_Ack==0)return 0;           //如果从机没有反应则返回0
+  54   1        
+C51 COMPILER V9.57.0.0   24C02                                                             06/30/2024 16:54:16 PAGE 2   
+
+  55   1        IIC.SendByte(AT24C04_SaveDataAddr);   //发送需要操作的数据地址
+  56   1        if(IIC.slv_Ack==0)return 0;
+  57   1        
+  58   1        IIC.Start_I2c();                      //重新启动一次
+  59   1        
+  60   1        IIC.SendByte(AT24C04_Addr+1);         //告诉从机需要读取数据
+  61   1        if(IIC.slv_Ack==0)return 0;           //如果从机没有反应则返回0
+  62   1        
+  63   1        for(i=0;i<LEN-1;i++)
+  64   1        {
+  65   2          *array=IIC.RcvByte();
+  66   2          IIC.Ack_I2c();
+  67   2          array++;
+  68   2        }
+  69   1      
+  70   1        //最后一个字节需要发送非应答
+  71   1        *array=IIC.RcvByte();
+  72   1        IIC.NoAck_I2c();
+  73   1        
+  74   1        IIC.Stop_I2c();           //关闭IIC
+  75   1      
+  76   1        return 1;
+  77   1        
+  78   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    504    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =     16    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)
