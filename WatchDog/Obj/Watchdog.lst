@@ -1,0 +1,87 @@
+C51 COMPILER V9.57.0.0   WATCHDOG                                                          07/02/2024 17:51:23 PAGE 1   
+
+
+C51 COMPILER V9.57.0.0, COMPILATION OF MODULE WATCHDOG
+OBJECT MODULE PLACED IN .\Obj\Watchdog.obj
+COMPILER INVOKED BY: D:\Keil_v5\C51\BIN\C51.EXE App\Watchdog.c LARGE OPTIMIZE(1,SPEED) BROWSE INCDIR(.\App;.\User) DEBUG
+                    - OBJECTEXTEND PRINT(.\Obj\Watchdog.lst) TABS(2) OBJECT(.\Obj\Watchdog.obj)
+
+line level    source
+
+   1          #include "main.h"
+   2          
+   3          //宏定义
+   4          #define WDT_FLAG  bit7
+   5          #define EN_WDT    bit5
+   6          #define CLR_WDT   bit4
+   7          #define IDLE_WDT  bit3
+   8          #define PS2       bit2
+   9          #define PS1       bit1
+  10          #define PS0       bit0
+  11          
+  12          //函数声明
+  13          static void Init(void);                     //初始化看门狗
+  14          static uint8_t Get_WatchdogStatus(void);    //获取看门狗当前状态=1开启，=0关闭
+  15          static void Start(void);                    //启动看门狗
+  16          static void Close(void);                    //关闭看门狗
+  17          static void Clear(void);                    //重置看门狗
+  18          
+  19          //看门狗实例化
+  20          Watchdog_t Watchdog=
+  21          {
+  22            Init,
+  23            Get_WatchdogStatus,
+  24            Start,
+  25            Close,
+  26            Clear
+  27          };
+  28          
+  29          //初始化看门狗
+  30          static void Init()
+  31          {
+  32   1        WDT_CONTR=(~WDT_FLAG)&CLR_WDT|IDLE_WDT|(PS2|PS1|PS0);
+  33   1        Watchdog.Start();
+  34   1      }
+  35          
+  36          //获取看门狗当前状态=1开启，=0关闭
+  37          static uint8_t Get_WatchdogStatus()
+  38          {
+  39   1        if(WDT_CONTR & EN_WDT)
+  40   1          return 1;
+  41   1        else
+  42   1          return 0;
+  43   1      }
+  44          
+  45          //启动看门狗
+  46          static void Start()
+  47          {
+  48   1        WDT_CONTR |= EN_WDT;
+  49   1      } 
+  50          
+  51          //关闭看门狗
+  52          static void Close()
+  53          {
+  54   1        WDT_CONTR &= (~EN_WDT);
+C51 COMPILER V9.57.0.0   WATCHDOG                                                          07/02/2024 17:51:23 PAGE 2   
+
+  55   1      } 
+  56          
+  57          //清零看门狗
+  58          static void Clear()
+  59          {
+  60   1        WDT_CONTR |= CLR_WDT;
+  61   1      } 
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =     41    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =     15    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

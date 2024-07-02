@@ -1,0 +1,205 @@
+C51 COMPILER V9.57.0.0   TM1620                                                            07/02/2024 17:51:23 PAGE 1   
+
+
+C51 COMPILER V9.57.0.0, COMPILATION OF MODULE TM1620
+OBJECT MODULE PLACED IN .\Obj\TM1620.obj
+COMPILER INVOKED BY: D:\Keil_v5\C51\BIN\C51.EXE App\TM1620.c LARGE OPTIMIZE(1,SPEED) BROWSE INCDIR(.\App;.\User) DEBUG O
+                    -BJECTEXTEND PRINT(.\Obj\TM1620.lst) TABS(2) OBJECT(.\Obj\TM1620.obj)
+
+line level    source
+
+   1          #include "main.h"
+   2          
+   3          #define STB P26
+   4          #define CLK P25
+   5          #define DIN P24
+   6          
+   7          #define GPIR1 Disp_SFR_Addr_00H
+   8          #define GPIR2 Disp_SFR_Addr_02H
+   9          
+  10          uint8_t code num[10] = {0x3F,0x06,0x5B,0x4F,0x66,0x6D,0x7D,0x07,0x7F,0x6F};  //数码管译码 0 - 9
+  11          
+  12          
+  13          static void Init(void);                           //初始化
+  14          static void Disp_Number(uint8_t ,uint8_t );       //设置数字
+  15          static void Delay_Bright_ADJ(uint8_t );   //亮度调节和延时
+  16          
+  17          static void TM1620_Write_Byte(uint8_t);    //TM1620写入字节
+  18          
+  19          //结构体
+  20          TM1620_t xdata TM1620=
+  21          {
+  22            Brightness_level_3,
+  23            Init,
+  24            Disp_Number,
+  25            Delay_Bright_ADJ
+  26          };
+  27          
+  28          
+  29          
+  30          /*
+  31            *  @name   TM1620_Write_Byte
+  32            *  @brief  写一个字节
+  33            *  @param  dat:一个字节数据
+  34            *  @retval None
+  35          */
+  36          static void TM1620_Write_Byte(uint8_t dat)
+  37          {
+  38   1        uint8_t TM1620_i=0;
+  39   1        STB=0;    //STB下降沿进入数据接收模式
+  40   1        Public.Delayms(1);
+  41   1        for(TM1620_i=0;TM1620_i<8;TM1620_i++)
+  42   1        {
+  43   2          //CLK下降沿时准备数据
+  44   2          CLK=0;
+  45   2          if((dat&bit0)==bit0)
+  46   2            DIN=1;
+  47   2          else
+  48   2            DIN=0;
+  49   2          dat=dat>>1;//右移到下一位
+  50   2          _nop_();
+  51   2      
+  52   2          //CLK上升沿读取数据
+  53   2          CLK=1;
+  54   2          _nop_();
+C51 COMPILER V9.57.0.0   TM1620                                                            07/02/2024 17:51:23 PAGE 2   
+
+  55   2        }
+  56   1      }
+  57          
+  58          
+  59          /*
+  60            *  @name   Init
+  61            *  @brief  初始化TM1620
+  62            *  @param  None
+  63            *  @retval None
+  64          */
+  65          static void Init()
+  66          {
+  67   1        uint8_t init_i=0;
+  68   1        //设置显示模式
+  69   1        TM1620_Write_Byte(Disp_Mode_GRID6_SEG8);
+  70   1        STB=1;
+  71   1        
+  72   1        //设置写显存的数据命令，自动加一
+  73   1        TM1620_Write_Byte(Write_Data_Addr_Auto_Add);
+  74   1        STB=1;
+  75   1        
+  76   1        //数据清零
+  77   1        TM1620_Write_Byte(Disp_SFR_Addr_00H);
+  78   1        for(init_i=0;init_i<Disp_SFR_Addr_Num;init_i++)
+  79   1          TM1620_Write_Byte(0x00);
+  80   1        STB=1;
+  81   1        
+  82   1        //设置辉度
+  83   1        TM1620_Write_Byte(TM1620.Brightness);
+  84   1        STB=1;
+  85   1        
+  86   1        
+  87   1        //设置显示模式
+  88   1        TM1620_Write_Byte(Disp_Mode_GRID6_SEG8);
+  89   1        STB=1;
+  90   1        
+  91   1        //设置写显存的数据命令，固定地址
+  92   1        TM1620_Write_Byte(Write_Data_Addr_Fix);
+  93   1        STB=1;
+  94   1        
+  95   1        //写显示寄存器
+  96   1        TM1620_Write_Byte(GPIR1);
+  97   1        TM1620_Write_Byte(0xFF);
+  98   1        STB=1;
+  99   1        
+ 100   1        TM1620_Write_Byte(GPIR2);
+ 101   1        TM1620_Write_Byte(0xFF);
+ 102   1        STB=1;
+ 103   1        
+ 104   1        //设置辉度
+ 105   1        TM1620_Write_Byte(TM1620.Brightness);
+ 106   1        STB=1;
+ 107   1      }
+ 108          
+ 109          
+ 110          /*
+ 111            *  @name   Disp_Number
+ 112            *  @brief  显示数字
+ 113            *  @param  GPIR:位,1十位，2个位
+ 114                 Num：显示数字
+ 115            *  @retval None
+ 116          */
+C51 COMPILER V9.57.0.0   TM1620                                                            07/02/2024 17:51:23 PAGE 3   
+
+ 117          static void Disp_Number(uint8_t GPIR,uint8_t Num)
+ 118          {
+ 119   1        //指定寄存器
+ 120   1        switch(GPIR)
+ 121   1        {
+ 122   2          case 1:
+ 123   2            TM1620_Write_Byte(GPIR1);
+ 124   2            break;
+ 125   2          case 2:
+ 126   2            TM1620_Write_Byte(GPIR2);
+ 127   2            break;  
+ 128   2        }
+ 129   1        //设置数据
+ 130   1        TM1620_Write_Byte(num[Num]);
+ 131   1        STB=1;
+ 132   1        
+ 133   1        //设置辉度
+ 134   1        TM1620_Write_Byte(TM1620.Brightness);
+ 135   1        STB=1;
+ 136   1      }
+ 137          
+ 138          
+ 139          /*
+ 140            *  @name   Delay_Bright_ADJ
+ 141            *  @brief  延时调整亮度
+ 142            *  @param  ms：延时时间
+ 143            *  @retval None
+ 144          */
+ 145          static void Delay_Bright_ADJ(uint8_t ms)
+ 146          {
+ 147   1        uint8_t k=0;
+ 148   1        
+ 149   1        for(k=0;k<ms;k++)
+ 150   1        {
+ 151   2          Key1.KEY_Detect();
+ 152   2          if(Key1.Press==true)
+ 153   2          {
+ 154   3            TM1620.Brightness=Brightness_level_0;
+ 155   3            break;
+ 156   3          }
+ 157   2          else if(Key1.Click==true && Key1.Press==false)
+ 158   2          {
+ 159   3            switch(TM1620.Brightness)
+ 160   3            {
+ 161   4              case Brightness_level_0: TM1620.Brightness=Brightness_level_1;break;
+ 162   4              case Brightness_level_1: TM1620.Brightness=Brightness_level_2;break;
+ 163   4              case Brightness_level_2: TM1620.Brightness=Brightness_level_3;break;
+ 164   4              case Brightness_level_3: TM1620.Brightness=Brightness_level_4;break;
+ 165   4              case Brightness_level_4: TM1620.Brightness=Brightness_level_5;break;
+ 166   4              case Brightness_level_5: TM1620.Brightness=Brightness_level_6;break;
+ 167   4              case Brightness_level_6: TM1620.Brightness=Brightness_level_7;break;
+ 168   4              case Brightness_level_7: TM1620.Brightness=Brightness_level_8;break;
+ 169   4              case Brightness_level_8: TM1620.Brightness=Brightness_level_1;break;
+ 170   4            }
+ 171   3            break;
+ 172   3          }
+ 173   2          Public.Delayms(1);
+ 174   2        }
+ 175   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+C51 COMPILER V9.57.0.0   TM1620                                                            07/02/2024 17:51:23 PAGE 4   
+
+   CODE SIZE        =    493    ----
+   CONSTANT SIZE    =     10    ----
+   XDATA SIZE       =     17    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)
