@@ -1,0 +1,201 @@
+C51 COMPILER V9.57.0.0   MODBUSRTU                                                         07/06/2024 17:17:32 PAGE 1   
+
+
+C51 COMPILER V9.57.0.0, COMPILATION OF MODULE MODBUSRTU
+OBJECT MODULE PLACED IN .\Obj\ModbusRTU.obj
+COMPILER INVOKED BY: D:\Keil Arm\C51\BIN\C51.EXE App\ModbusRTU.c LARGE OPTIMIZE(1,SPEED) BROWSE INCDIR(.\App;.\User) DEB
+                    -UG OBJECTEXTEND PRINT(.\Obj\ModbusRTU.lst) OBJECT(.\Obj\ModbusRTU.obj)
+
+line level    source
+
+   1          #include "main.h"
+   2          
+   3          #define FuntionCode_Read_03 0x03
+   4          #define FuntionCode_Write_06 0x06
+   5          
+   6          static void Protocol_Analysis(UART_t*);//协议解析
+   7          static void Modbus_Read_Register(UART_t*);//读寄存器
+   8          static void Modbus_Write_Register(UART_t*);//写寄存器
+   9          
+  10          Modbus_t idata Modbus=
+  11          {
+  12                  1,
+  13                  Protocol_Analysis
+  14          };
+  15          
+  16          
+  17          /*
+  18            *  @name   Protocol_Analysis
+  19            *  @brief  解析报文，并根据报文进行响应
+  20            *  @param  UART:结构体指针
+  21            *  @retval None
+  22          */
+  23          static void Protocol_Analysis(UART_t* UART)
+  24          {
+  25   1              UART_t* const xdata COM=UART;
+  26   1              
+  27   1              //核对地址
+  28   1              if(*(COM->pucRec_Buffer+0)==Modbus.Addr)
+  29   1              {
+  30   2                      //计算校验码
+  31   2                      CRC_16.CRC=CRC_16.CRC_Check(COM->pucRec_Buffer,6);
+  32   2                      CRC_16.CRC_H=CRC_16.CRC>>8;
+  33   2                      CRC_16.CRC_L=(uint8_t)CRC_16.CRC;
+  34   2                      //核对校验码
+  35   2                      if(((*(COM->pucRec_Buffer+6)==CRC_16.CRC_L) && (*(COM->pucRec_Buffer+7)==CRC_16.CRC_H))
+  36   2                                                                                                      ||
+  37   2                      ((*(COM->pucRec_Buffer+6)==CRC_16.CRC_H) && (*(COM->pucRec_Buffer+7)==CRC_16.CRC_L)))
+  38   2                      {
+  39   3                              //判断功能码
+  40   3                              if(*(COM->pucRec_Buffer+1)==FuntionCode_Read_03)
+  41   3                              {
+  42   4                                      Modbus_Read_Register(COM);
+  43   4                              }
+  44   3                              else if(*(COM->pucRec_Buffer+1)==FuntionCode_Write_06)
+  45   3                              {
+  46   4                                      Modbus_Write_Register(COM);
+  47   4                              }
+  48   3                      }
+  49   2                      else
+  50   2                      {
+  51   3                              #if TestPrint
+  52   3                                      UART1.RS485_Send_Mode();
+  53   3                                      printf("CRC16 Check ERROR！！");
+  54   3                                      UART1.RS485_Receive_Mode();
+C51 COMPILER V9.57.0.0   MODBUSRTU                                                         07/06/2024 17:17:32 PAGE 2   
+
+  55   3                              #endif 
+  56   3                      }
+  57   2              }
+  58   1      }
+  59          
+  60          
+  61          /*
+  62            *  @name   Modbus_Read_Register
+  63            *  @brief  响应对方读寄存器操作
+  64            *  @param  UART:结构体指针
+  65            *  @retval None
+  66          */
+  67          static void Modbus_Read_Register(UART_t* UART)
+  68          {
+  69   1              UART_t* const xdata COM=UART;//保护数据
+  70   1              uint16_t xdata Start_Regist_Addr=0;//读出起始地址
+  71   1              uint16_t xdata Read_Regist_Num=0;//读出读取数量
+  72   1              uint8_t xdata Check_LEN=3;//跟踪数据长度
+  73   1              uint8_t Read_Reg_i;
+  74   1              uint8_t Read_Reg_j;
+  75   1              //计算寄存器开始地址
+  76   1              Start_Regist_Addr=((Start_Regist_Addr+*(COM->pucRec_Buffer+2))<<8)+*(COM->pucRec_Buffer+3);
+  77   1              //计算需要读取寄存器数量
+  78   1              Read_Regist_Num=((Read_Regist_Num+*(COM->pucRec_Buffer+4))<<8)+*(COM->pucRec_Buffer+5); 
+  79   1              //不超出全局数组范围，并且读取数量大于0小于3
+  80   1              if(((Start_Regist_Addr+Read_Regist_Num)<=Modbus_Regist_LEN) && Read_Regist_Num>0 && Read_Regist_Num<3)
+  81   1              {
+  82   2                      //地址
+  83   2                      *(COM->pucSend_Buffer+0)=Modbus.Addr;
+  84   2                      //功能码
+  85   2                      *(COM->pucSend_Buffer+1)=FuntionCode_Read_03;
+  86   2                      //数据长度（字节）
+  87   2                      *(COM->pucSend_Buffer+2)=(uint8_t)Read_Regist_Num*2;
+  88   2                      //装载寄存器数据
+  89   2                      for(Read_Reg_i=0;Read_Reg_i<Read_Regist_Num;Read_Reg_i++)
+  90   2                      {
+  91   3                              for(Read_Reg_j=Read_Reg_i;Read_Reg_j<=(Read_Reg_i+1);Read_Reg_j++)
+  92   3                              {
+  93   4                                      if(Read_Reg_j==Read_Reg_i)
+  94   4                                      {
+  95   5                                              *(COM->pucSend_Buffer+3+Read_Reg_i+Read_Reg_j)=Modbus_Regist[Start_Regist_Addr+Read_Reg_i]>>8;//高位
+  96   5                                      }
+  97   4                                      else
+  98   4                                      {
+  99   5                                              *(COM->pucSend_Buffer+3+Read_Reg_i+Read_Reg_j)=(uint8_t)Modbus_Regist[Start_Regist_Addr+Read_Reg_i];/
+             -/低位
+ 100   5                                      }
+ 101   4                              }
+ 102   3                              Check_LEN=Check_LEN+2;
+ 103   3                      }
+ 104   2      
+ 105   2                      //校验码
+ 106   2                      CRC_16.CRC=CRC_16.CRC_Check(COM->pucSend_Buffer,Check_LEN);
+ 107   2                      *(COM->pucSend_Buffer+(Check_LEN++))=(uint8_t)CRC_16.CRC;
+ 108   2                      *(COM->pucSend_Buffer+(Check_LEN++))=CRC_16.CRC>>8;
+ 109   2                      
+ 110   2                      //发送数据
+ 111   2                      COM->SendArray(COM->pucSend_Buffer,Check_LEN);
+ 112   2              }
+ 113   1              else if((Start_Regist_Addr+Read_Regist_Num)>Modbus_Regist_LEN)
+ 114   1              {
+ 115   2                      #if TestPrint
+C51 COMPILER V9.57.0.0   MODBUSRTU                                                         07/06/2024 17:17:32 PAGE 3   
+
+ 116   2                              UART1.RS485_Send_Mode();
+ 117   2                              printf("Regist address out of range！！0~9\n");
+ 118   2                              UART1.RS485_Receive_Mode();
+ 119   2                      #endif 
+ 120   2              }
+ 121   1              else
+ 122   1              {
+ 123   2                      #if TestPrint
+ 124   2                              UART1.RS485_Send_Mode();
+ 125   2                              printf("Only read two regist once！！\n");
+ 126   2                              UART1.RS485_Receive_Mode();
+ 127   2                      #endif 
+ 128   2              }
+ 129   1      }
+ 130          
+ 131          
+ 132          /*
+ 133            *  @name   Modbus_Write_Register
+ 134            *  @brief  响应对方要写寄存器操作
+ 135            *  @param  UART:结构体指针
+ 136            *  @retval None
+ 137          */
+ 138          static void Modbus_Write_Register(UART_t* UART)
+ 139          {
+ 140   1              UART_t* const xdata COM=UART;
+ 141   1              uint16_t xdata Write_RegAddr=0;//需要写的寄存器地址
+ 142   1              uint16_t xdata Write_RegData=0;//需要写的数据
+ 143   1              uint8_t Send_i;
+ 144   1      
+ 145   1              for(Send_i=0;Send_i<8;Send_i++)
+ 146   1              {
+ 147   2                      *(COM->pucSend_Buffer+Send_i)=*(COM->pucRec_Buffer+Send_i);
+ 148   2              }
+ 149   1              COM->SendArray(COM->pucSend_Buffer,8);
+ 150   1      
+ 151   1              Write_RegAddr=((Write_RegAddr+*(COM->pucRec_Buffer+2))<<8)+*(COM->pucRec_Buffer+3);
+ 152   1              Write_RegData=((Write_RegAddr+*(COM->pucRec_Buffer+4))<<8)+*(COM->pucRec_Buffer+5);
+ 153   1              
+ 154   1              //在0~9范围内
+ 155   1              if(Write_RegAddr<=9 && Write_RegAddr>=0)
+ 156   1              {
+ 157   2                      Modbus_Regist[Write_RegAddr]=Write_RegData;//赋值给数组
+ 158   2              }
+ 159   1              else
+ 160   1              {
+ 161   2                      #if TestPrint
+ 162   2                              UART1.RS485_Send_Mode();
+ 163   2                              printf("Regist address out of range2！！0~9\n");
+ 164   2                              UART1.RS485_Receive_Mode();
+ 165   2                      #endif 
+ 166   2              }
+ 167   1      }
+ 168          
+ 169          
+ 170          //
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =   2037    ----
+   CONSTANT SIZE    =    126    ----
+   XDATA SIZE       =     30    ----
+   PDATA SIZE       =   ----    ----
+C51 COMPILER V9.57.0.0   MODBUSRTU                                                         07/06/2024 17:17:32 PAGE 4   
+
+   DATA SIZE        =   ----    ----
+   IDATA SIZE       =      4    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

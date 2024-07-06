@@ -1,0 +1,101 @@
+C51 COMPILER V9.57.0.0   KEY1                                                              07/06/2024 17:17:32 PAGE 1   
+
+
+C51 COMPILER V9.57.0.0, COMPILATION OF MODULE KEY1
+OBJECT MODULE PLACED IN .\Obj\Key1.obj
+COMPILER INVOKED BY: D:\Keil Arm\C51\BIN\C51.EXE App\Key1.c LARGE OPTIMIZE(1,SPEED) BROWSE INCDIR(.\App;.\User) DEBUG OB
+                    -JECTEXTEND PRINT(.\Obj\Key1.lst) OBJECT(.\Obj\Key1.obj)
+
+line level    source
+
+   1          #include "main.h"
+   2          
+   3          #define key1_status P32         //P32状态
+   4          
+   5          static void KEY_Detect(void);
+   6          
+   7          Key_t xdata Key1=
+   8          {
+   9                  false,
+  10                  false,
+  11                  false,
+  12                  false,
+  13                  KEY_Detect
+  14          };
+  15          
+  16          
+  17          //按键检测
+  18          static void KEY_Detect()
+  19          {
+  20   1              uint16_t key_i=0;
+  21   1              
+  22   1              //如果弹起状态清零
+  23   1              if(key1_status==1)
+  24   1              {
+  25   2                      Key1.Click=false;
+  26   2                      Key1.Press=false;
+  27   2              }
+  28   1              
+  29   1              //单击检测
+  30   1              if(Key1.KEY_FLAG==true)
+  31   1              {
+  32   2                      Key1.KEY_FLAG=false;
+  33   2                      EX0 = 0; //关中断
+  34   2                      
+  35   2                      if(key1_status==0)
+  36   2                      {
+  37   3                              Public.Delayms(10);
+  38   3                              if(key1_status==0)
+  39   3                              {
+  40   4                                      Key1.Click=true;
+  41   4                              }
+  42   3                      }
+  43   2              }
+  44   1      
+  45   1              //长按检测
+  46   1              if(Key1.Click==true)
+  47   1              {
+  48   2                      Key1.Press=true;
+  49   2      
+  50   2                      Timer0.usDelay_Timer=0;
+  51   2                      while(Timer0.usDelay_Timer<TIMER0_3s)
+  52   2                      {
+  53   3                              if(key1_status==1)
+  54   3                              {
+C51 COMPILER V9.57.0.0   KEY1                                                              07/06/2024 17:17:32 PAGE 2   
+
+  55   4                                      Key1.Press=false;
+  56   4                                      break;
+  57   4                              }
+  58   3                      }
+  59   2              }
+  60   1              
+  61   1              //清除Click状态，确保同一时间只有一个状态
+  62   1              if(Key1.Press==true)
+  63   1              {
+  64   2                      Key1.Click=false;
+  65   2              }
+  66   1      
+  67   1              EX0 = 1; //开中断
+  68   1      }
+  69          
+  70          
+  71          //KEY1(P32)中断服务函数
+  72          void INT0_isr() interrupt 0
+  73          {
+  74   1              Key1.KEY_FLAG=true;
+  75   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    153    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =      9    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

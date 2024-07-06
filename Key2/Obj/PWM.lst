@@ -1,0 +1,163 @@
+C51 COMPILER V9.57.0.0   PWM                                                               07/06/2024 17:17:32 PAGE 1   
+
+
+C51 COMPILER V9.57.0.0, COMPILATION OF MODULE PWM
+OBJECT MODULE PLACED IN .\Obj\PWM.obj
+COMPILER INVOKED BY: D:\Keil Arm\C51\BIN\C51.EXE App\PWM.c LARGE OPTIMIZE(1,SPEED) BROWSE INCDIR(.\App;.\User) DEBUG OBJ
+                    -ECTEXTEND PRINT(.\Obj\PWM.lst) OBJECT(.\Obj\PWM.obj)
+
+line level    source
+
+   1          #include "main.h"
+   2          
+   3          #define CCP_S1 bit5
+   4          #define CCP_S0 bit4
+   5          
+   6          #define EPC0H    bit1   //PCA_PWM0寄存器设置比较值(第九位)
+   7          #define EPC0L  bit2
+   8          
+   9          
+  10          static void PWM_Init(void);
+  11          static void PWM_LED_Adjust_Brightness(void);
+  12          
+  13          static void BackupDuty(uint16_t ,uint8_t );
+  14          static uint8_t ReadDuty(uint16_t );
+  15          
+  16          static void Set_Brightness(void);//设置亮度
+  17          
+  18          
+  19          PWM_t PWM=
+  20          {
+  21                  Duty_20,
+  22                  PWM_Init,
+  23                  PWM_LED_Adjust_Brightness,
+  24                  Set_Brightness,
+  25          
+  26                  BackupDuty,
+  27                  ReadDuty
+  28          };
+  29          
+  30          //PWM初始化
+  31          static void PWM_Init()
+  32          {
+  33   1              //CCP映射到P35
+  34   1              AUXR1 &= ~CCP_S1;
+  35   1              AUXR1 |=  CCP_S0;
+  36   1              
+  37   1              CCON=0x00;
+  38   1              CMOD=0x0C;//设置PCA时钟源  ->  SYSclk/6
+  39   1                                                      //PWM频率=SYSclk/6/256=7.2kHz
+  40   1              
+  41   1              CL=0;
+  42   1              CH=0;//复位PCA计数器
+  43   1              
+  44   1              CCAPM0  =0x42;          //允许比较器公功能
+  45   1              PCA_PWM0        =0x00;  //工作于8位PWM模式
+  46   1              
+  47   1              //设置默认占空比
+  48   1              PCA_PWM0 &= (~EPC0H);   //第九位为0
+  49   1              PWM.Duty=ReadDuty(EEPROM_Default_Addr);
+  50   1              
+  51   1              Set_Brightness();//设置亮度
+  52   1              
+  53   1              CR=1;//启动PCA计时器
+  54   1      }
+C51 COMPILER V9.57.0.0   PWM                                                               07/06/2024 17:17:32 PAGE 2   
+
+  55          
+  56          //使用按键调整亮度
+  57          static void PWM_LED_Adjust_Brightness()
+  58          {
+  59   1              //切换占空比
+  60   1              switch(PWM.Duty)
+  61   1              {
+  62   2                      case Duty_0:   PWM.Duty=Duty_20;  break;
+  63   2                      case Duty_20:  PWM.Duty=Duty_40;  break;
+  64   2                      case Duty_40:  PWM.Duty=Duty_60;  break;
+  65   2                      case Duty_60:  PWM.Duty=Duty_80;  break;
+  66   2                      case Duty_80:  PWM.Duty=Duty_100; break;
+  67   2                      case Duty_100: PWM.Duty=Duty_0;   break;
+  68   2                      default:                   PWM.Duty=Duty_20;  break;
+  69   2              }
+  70   1              
+  71   1              //设置亮度
+  72   1              Set_Brightness();
+  73   1      }
+  74          
+  75          //LED设置亮度
+  76          static void Set_Brightness()
+  77          {
+  78   1              //设置占空比
+  79   1              switch(PWM.Duty)
+  80   1              {
+  81   2                      case Duty_0:   CCAP0H=255;                         break;
+  82   2                      case Duty_20:  CCAP0H=256*(1-0.2); break;
+  83   2                      case Duty_40:  CCAP0H=256*(1-0.4); break;
+  84   2                      case Duty_60:  CCAP0H=256*(1-0.6); break;
+  85   2                      case Duty_80:  CCAP0H=256*(1-0.8); break;
+  86   2                      case Duty_100: CCAP0H=0;                                 break;
+  87   2                      default:                   CCAP0H=255;                     break;
+  88   2              }
+  89   1              PWM.BackupDuty(EEPROM_Default_Addr,PWM.Duty);
+  90   1      }
+  91          
+  92          
+  93          //备份占空比到EEPROM中
+  94          static void BackupDuty(uint16_t addr,uint8_t dat)
+  95          {
+  96   1              EEPROM.ucEEPROM_Cnt=EEPROM_Cnt;
+  97   1              EEPROM.ucEEPROM_Flag=false;
+  98   1      
+  99   1              while(EEPROM.ucEEPROM_Cnt--)
+ 100   1              {
+ 101   2                      EEPROM.EEPROM_EraseSector(addr);
+ 102   2                      EEPROM.EEPROM_WriteByte(addr,dat);
+ 103   2      
+ 104   2                      //验证是否写成功
+ 105   2                      if(EEPROM.EEPROM_ReadByte(addr)==dat)
+ 106   2                      {
+ 107   3                              EEPROM.ucEEPROM_Flag=true;
+ 108   3                              break;
+ 109   3                      }
+ 110   2              }
+ 111   1      }
+ 112          
+ 113          
+ 114          //从EEPROM中读取占空比
+ 115          static uint8_t ReadDuty(uint16_t addr)
+ 116          {
+C51 COMPILER V9.57.0.0   PWM                                                               07/06/2024 17:17:32 PAGE 3   
+
+ 117   1              uint8_t Data1=0,Data2=0;
+ 118   1              EEPROM.ucEEPROM_Cnt=EEPROM_Cnt;
+ 119   1              
+ 120   1              while(EEPROM.ucEEPROM_Cnt--)
+ 121   1              {
+ 122   2                      Data1=EEPROM.EEPROM_ReadByte(addr);
+ 123   2                      Data2=EEPROM.EEPROM_ReadByte(addr);
+ 124   2                      if(Data1==Data2)
+ 125   2                      {
+ 126   3                              break;
+ 127   3                      }
+ 128   2              }
+ 129   1              
+ 130   1              if(Data1==0xFF)
+ 131   1                      return 0;
+ 132   1              else
+ 133   1                      return Data1;
+ 134   1              
+ 135   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    490    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =     23    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

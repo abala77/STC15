@@ -1,0 +1,216 @@
+C51 COMPILER V9.57.0.0   IIC                                                               07/06/2024 17:17:32 PAGE 1   
+
+
+C51 COMPILER V9.57.0.0, COMPILATION OF MODULE IIC
+OBJECT MODULE PLACED IN .\Obj\IIC.obj
+COMPILER INVOKED BY: D:\Keil Arm\C51\BIN\C51.EXE User\IIC.c LARGE OPTIMIZE(1,SPEED) BROWSE INCDIR(.\App;.\User) DEBUG OB
+                    -JECTEXTEND PRINT(.\Obj\IIC.lst) OBJECT(.\Obj\IIC.obj)
+
+line level    source
+
+   1          /*************************此部分为I2C总线的驱动程序*************************************/
+   2          #include "main.h"
+   3          
+   4          #define  _Nop()  _nop_()   //定义空指令
+   5          
+   6          #define SCL             P23             //I2C  时钟
+   7          #define SDA   P22               //I2C  数据
+   8          
+   9          
+  10          static void I2C_Init(void);                             //IIC初始化
+  11          static void Start_I2c(void);                    //启动IIC
+  12          static void Stop_I2c(void);                             //停止IIC
+  13          static void SendByte(uint8_t);          //发送一个字节数据
+  14          static uint8_t RcvByte(void);                   //接收一个字节数据
+  15          static void Ack_I2c(void);                              //主机应答      
+  16          static void NoAck_I2c(void);                    //主机不应答
+  17          
+  18          static void delay(void);                                                        //延时5us左右
+  19                                  
+  20          //创建对象
+  21          IIC_t IIC=
+  22          {
+  23                  0,
+  24                  
+  25                  I2C_Init,
+  26                  Start_I2c,
+  27                  Stop_I2c,
+  28                  SendByte,
+  29                  RcvByte,
+  30                  Ack_I2c,
+  31                  NoAck_I2c
+  32          };
+  33          
+  34          /*
+  35            *  @name   Delay
+  36            *  @brief  延时一个有效周期
+  37            *  @param  None
+  38            *  @retval None
+  39          */
+  40          static void delay()
+  41          {
+  42   1              _Nop();
+  43   1              _Nop();
+  44   1              _Nop();
+  45   1              _Nop();
+  46   1              _Nop();
+  47   1      }
+  48          
+  49          /*
+  50            *  @name   I2C_Init
+  51            *  @brief  IIC初始化，释放SDA和SCL
+  52            *  @param  None
+  53            *  @retval None
+  54          */
+C51 COMPILER V9.57.0.0   IIC                                                               07/06/2024 17:17:32 PAGE 2   
+
+  55          static void I2C_Init()
+  56          {
+  57   1          SCL = 1;    // 设置SCL为高电平
+  58   1          SDA = 1;    // 设置SDA为高电平
+  59   1      }
+  60          
+  61          /*
+  62            *  @name   Start_I2c
+  63            *  @brief  启动总线
+  64            *  @param  None
+  65            *  @retval None
+  66          */
+  67          static void Start_I2c()
+  68          {
+  69   1        SDA = 1; // 设置SDA为高电平
+  70   1              SCL = 1; // 设置SCL为高电平
+  71   1              delay(); // 延时
+  72   1              SDA = 0; // 产生起始信号
+  73   1              delay(); // 延时
+  74   1              SCL = 0; // 设置SCL为低电平
+  75   1      }
+  76          
+  77          
+  78          /*
+  79            *  @name   Stop_I2c
+  80            *  @brief  结束总线
+  81            *  @param  None
+  82            *  @retval None
+  83          */
+  84          static void Stop_I2c()
+  85          {
+  86   1              SDA = 0; // 设置SDA为低电平
+  87   1              SCL = 1; // 设置SCL为高电平
+  88   1              delay(); // 延时
+  89   1              SDA = 1; // 产生停止信号
+  90   1              delay(); // 延时
+  91   1      }
+  92          
+  93          
+  94          /*
+  95            *  @name   SendByte
+  96                  *  @brief  发送一个字节数据。（发完后等待应答,并对此状态位进行操作.(不应答或非应答都使ack=0)）   
+  97                  *  @param  Data:需要发送的数据，可以是地址,也可以是数据
+  98            *  @retval None
+  99          */
+ 100          static void SendByte(uint8_t Data)
+ 101          {
+ 102   1              uint8_t BitCnt;
+ 103   1       
+ 104   1              for(BitCnt=0;BitCnt<8;BitCnt++)  /*要传送的数据长度为8位*/
+ 105   1              {
+ 106   2                      if((Data<<BitCnt)&0x80)
+ 107   2                              SDA=1;   /*判断发送位*/
+ 108   2                      else  
+ 109   2                              SDA=0;                
+ 110   2                      delay();
+ 111   2                      SCL=1;               /*置时钟线为高，通知被控器开始接收数据位*/
+ 112   2                      delay();      
+ 113   2                      SCL=0; 
+ 114   2              }
+ 115   1              
+ 116   1              SDA=1;                /*8位发送完后释放数据线，准备接收应答位*/   
+C51 COMPILER V9.57.0.0   IIC                                                               07/06/2024 17:17:32 PAGE 3   
+
+ 117   1              delay();
+ 118   1              SCL=1;
+ 119   1              delay();
+ 120   1              if(SDA==1)IIC.slv_Ack=0;     
+ 121   1                       else IIC.slv_Ack=1;        /*判断是否接收到应答信号*/
+ 122   1              SCL=0;
+ 123   1              delay();
+ 124   1      }
+ 125             
+ 126          
+ 127          /*
+ 128            *  @name   RcvByte
+ 129                  *  @brief  接收一个字节数据。（发完后请用应答函数应答从机）
+ 130                  *  @param  None
+ 131                  *  @retval 8位无符号数据
+ 132          */
+ 133          static uint8_t RcvByte()
+ 134          {
+ 135   1        uint8_t  retc;
+ 136   1        uint8_t  BitCnt;
+ 137   1        
+ 138   1        retc=0; 
+ 139   1        SDA=1;                       /*置数据线为输入方式*/
+ 140   1        for(BitCnt=0;BitCnt<8;BitCnt++)
+ 141   1              {           
+ 142   2                      SCL=0;                  /*置时钟线为低，准备接收数据位*/
+ 143   2                      delay();
+ 144   2                      SCL=1;                  /*置时钟线为高使数据线上数据有效*/
+ 145   2                      delay();
+ 146   2                      retc=retc<<1;
+ 147   2                      if(SDA==1)retc=retc+1;  /*读数据位,接收的数据位放入retc中 */
+ 148   2              }
+ 149   1              SCL=0;    
+ 150   1              delay();
+ 151   1              
+ 152   1              return(retc);
+ 153   1      }
+ 154          
+ 155          
+ 156          /*
+ 157            *  @name   Ack_I2c
+ 158                  *  @brief  主机应答信号
+ 159                  *  @param  None
+ 160                  *  @retval None
+ 161          */
+ 162          static void Ack_I2c()
+ 163          {             
+ 164   1        SDA=0;                                                                                /*应答信号 */
+ 165   1        delay();     
+ 166   1        SCL=1;
+ 167   1        delay();
+ 168   1        SCL=0;                     /*清时钟线，钳住I2C总线以便继续接收*/
+ 169   1        delay();  
+ 170   1      }
+ 171          
+ 172          /*
+ 173            *  @name   NoAck_I2c
+ 174                  *  @brief  主机非应答信号
+ 175                  *  @param  None
+ 176                  *  @retval None
+ 177          */
+ 178          static void NoAck_I2c()
+C51 COMPILER V9.57.0.0   IIC                                                               07/06/2024 17:17:32 PAGE 4   
+
+ 179          {
+ 180   1        SDA=1;              /*非应答信号 */
+ 181   1        delay();    
+ 182   1        SCL=1;
+ 183   1        delay();
+ 184   1        SCL=0;                     /*清时钟线，钳住I2C总线以便继续接收*/
+ 185   1        delay();
+ 186   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    248    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =     26    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

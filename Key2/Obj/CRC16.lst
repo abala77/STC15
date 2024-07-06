@@ -1,0 +1,59 @@
+C51 COMPILER V9.57.0.0   CRC16                                                             07/06/2024 17:17:32 PAGE 1   
+
+
+C51 COMPILER V9.57.0.0, COMPILATION OF MODULE CRC16
+OBJECT MODULE PLACED IN .\Obj\CRC16.obj
+COMPILER INVOKED BY: D:\Keil Arm\C51\BIN\C51.EXE App\CRC16.c LARGE OPTIMIZE(1,SPEED) BROWSE INCDIR(.\App;.\User) DEBUG O
+                    -BJECTEXTEND PRINT(.\Obj\CRC16.lst) OBJECT(.\Obj\CRC16.obj)
+
+line level    source
+
+   1          #include "main.h"
+   2          
+   3          static uint16_t CRC_Check(uint8_t*,uint8_t);
+   4          
+   5          CRC_16_t xdata CRC_16={0,0,0,CRC_Check};
+   6          
+   7          
+   8          
+   9          /*
+  10                  * @name   CRC_Check
+  11                  * @brief  CRC校验
+  12                  * @param  CRC_Ptr->数组指针，LEN->长度
+  13                  * @retval CRC校验值      
+  14          */
+  15          static uint16_t CRC_Check(uint8_t *CRC_Ptr,uint8_t LEN)
+  16          {
+  17   1              uint16_t CRC = 0;
+  18   1              uint8_t CRC_i   = 0;
+  19   1              uint8_t CRC_j   = 0;
+  20   1      
+  21   1              CRC = 0xffff;
+  22   1              for(CRC_i=0;CRC_i<LEN;CRC_i++)
+  23   1              {
+  24   2                      CRC ^= (uint16_t)(*(CRC_Ptr+CRC_i));
+  25   2                      for(CRC_j=0;CRC_j<8;CRC_j++)
+  26   2                      {
+  27   3                              if(CRC & 0x0001)
+  28   3                                      CRC = (CRC >> 1) ^ 0xA001;
+  29   3                              else
+  30   3                                      CRC = (CRC >> 1);
+  31   3                      }
+  32   2              }
+  33   1              
+  34   1              return CRC;
+  35   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    226    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =     15    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)
